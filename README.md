@@ -1,0 +1,499 @@
+# bangla-synonyms 🇧🇩
+
+[![PyPI](https://img.shields.io/pypi/v/bangla-synonyms)](https://pypi.org/project/bangla-synonyms/)
+[![Python](https://img.shields.io/pypi/pyversions/bangla-synonyms)](https://pypi.org/project/bangla-synonyms/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+A Python library for looking up synonyms of Bangla (Bengali) words — with a bundled offline dataset and automatic live scraping from [Bangla Wiktionary](https://bn.wiktionary.org) as fallback.
+
+```python
+from bangla_synonyms import BanglaSynonyms
+
+bn = BanglaSynonyms()
+bn.get("চোখ")     # → ['চক্ষু', 'নেত্র', 'লোচন', 'আঁখি']
+bn.get("সুন্দর")  # → ['মনোরম', 'চমৎকার', 'মনোহর', 'শোভন']
+```
+
+---
+
+### Why?
+
+Bengali is spoken by over 230 million people, yet it remains one of the most underserved languages in the NLP ecosystem. Finding synonyms programmatically — something trivially easy for English — has no good solution for Bangla.
+
+`bangla-synonyms` fills that gap. It is useful for:
+
+- **Text augmentation** — expand training data for Bangla ML models
+- **Search & indexing** — build synonym-aware search in Bangla apps
+- **Writing tools** — avoid word repetition in Bangla text editors
+- **Education** — vocabulary builders, language learning apps
+- **Linguistics research** — corpus building, lexical analysis
+
+Results are cached locally on first lookup, so the dataset grows automatically the more you use it. No API key, no internet required for cached words.
+
+---
+
+## Table of Contents
+
+- [Install](#install)
+- [Quick Start](#quick-start)
+- [BanglaSynonyms — simple API](#banglasyonyms--simple-api)
+- [Scrapper — full control](#scrapper--full-control)
+- [bangla_synonyms.core — advanced](#bangla_synonymscore--advanced)
+  - [DatasetManager](#datasetmanager)
+  - [WordlistFetcher](#wordlistfetcher)
+  - [BatchScraper](#batchscraper)
+- [CLI](#cli)
+- [Project Layout](#project-layout)
+- [How It Works](#how-it-works)
+- [Contributing](#contributing)
+- [License](#license)
+
+---
+
+## Install
+
+```bash
+pip install bangla-synonyms
+```
+
+Optional: download the full community dataset (~10 000 words):
+
+```bash
+bangla-synonyms download
+```
+
+---
+
+## Quick Start
+
+```python
+from bangla_synonyms import BanglaSynonyms
+
+bn = BanglaSynonyms()
+
+bn.get("চোখ")
+# → ['চক্ষু', 'নেত্র', 'লোচন', 'আঁখি']
+
+bn.get_many(["চোখ", "মা", "সুন্দর"])
+# → {'চোখ': [...], 'মা': [...], 'সুন্দর': [...]}
+```
+
+That's it. No API keys, no extra configuration.
+
+---
+
+## BanglaSynonyms — simple API
+
+`BanglaSynonyms` is the **recommended starting point**. It wraps `Scrapper`
+with sensible defaults:
+
+- checks the local dataset first (fast, no network),
+- falls back to live Wiktionary if the word is not cached,
+- auto-saves the result for next time.
+
+```python
+from bangla_synonyms import BanglaSynonyms
+
+bn = BanglaSynonyms()
+```
+
+### `get(word) → list[str]`
+
+```python
+bn.get("চোখ")      # → ['চক্ষু', 'নেত্র', 'লোচন', 'আঁখি']
+bn.get("xyz")      # → []   (nothing found)
+```
+
+### `get_many(words) → dict[str, list[str]]`
+
+```python
+bn.get_many(["চোখ", "মা", "দুঃখ"])
+# → {'চোখ': [...], 'মা': [...], 'দুঃখ': [...]}
+```
+
+### `add(word, synonyms)`
+
+Manually add synonyms to the local dataset. Persists to disk immediately.
+
+```python
+bn.add("পরিবেশ", ["প্রকৃতি", "জগত"])
+```
+
+### `stats() → dict`
+
+```python
+bn.stats()
+# Words         : 1 250
+# Total synonyms: 6 430
+# Avg per word  : 5.14
+# Source        : /home/user/.bangla_synonyms/dataset.json
+```
+
+### `export(path, fmt="json")`
+
+```python
+bn.export("synonyms.json")
+bn.export("synonyms.csv", fmt="csv")
+```
+
+---
+
+## Scrapper — full control
+
+Use `Scrapper` when you need fine-grained control over network behaviour,
+caching, and request rate.
+
+```python
+from bangla_synonyms import Scrapper
+```
+
+### Parameters
+
+| Parameter   | Type    | Default | Description                              |
+| ----------- | ------- | ------- | ---------------------------------------- |
+| `offline`   | `bool`  | `False` | No internet — local dataset only         |
+| `auto_save` | `bool`  | `True`  | Persist scraped results to local dataset |
+| `delay`     | `float` | `1.0`   | Seconds to wait between requests         |
+| `timeout`   | `int`   | `10`    | HTTP request timeout (seconds)           |
+
+### Common patterns
+
+```python
+# Default: local-first, online fallback, auto-save
+sc = Scrapper()
+
+# Local dataset only — no HTTP calls at all
+sc = Scrapper(offline=True)
+
+# Scrape but never write to disk
+sc = Scrapper(auto_save=False)
+
+# Polite scraping on a slow connection
+sc = Scrapper(delay=2.0, timeout=15)
+
+# Full custom
+sc = Scrapper(offline=False, auto_save=True, delay=1.5, timeout=20)
+```
+
+### `get(word) → list[str]`
+
+```python
+sc.get("চোখ")    # → ['চক্ষু', 'নেত্র', ...]
+sc.get("xyz")    # → []
+```
+
+**Lookup flow:**
+
+```
+strip whitespace
+    ↓
+local dataset hit? → return immediately
+    ↓
+offline=True? → return []
+    ↓
+fetch from Wiktionary
+    ↓
+auto_save=True? → save to disk
+    ↓
+return synonyms (or [] if not found)
+```
+
+### `get_many(words) → dict[str, list[str]]`
+
+```python
+sc.get_many(["চোখ", "মা", "আকাশ"])
+# → {'চোখ': [...], 'মা': [...], 'আকাশ': [...]}
+```
+
+A `delay`-second pause is inserted between each online request.
+
+---
+
+## `bangla_synonyms.core` — advanced
+
+```python
+from bangla_synonyms.core import DatasetManager, WordlistFetcher, BatchScraper
+```
+
+### DatasetManager
+
+Manages the local synonym dataset stored at `~/.bangla_synonyms/dataset.json`.
+
+```python
+from bangla_synonyms.core import DatasetManager
+
+dm = DatasetManager()
+```
+
+#### Reading
+
+```python
+dm.get("চোখ")         # → list[str]
+dm.has("চোখ")         # → bool
+dm.all_words()         # → sorted list of all words
+len(dm)                # → int
+"চোখ" in dm           # → bool
+```
+
+#### Writing
+
+```python
+# Add / merge synonyms (saves immediately)
+dm.add("চোখ", ["চক্ষু", "নেত্র"])
+
+# Remove a word
+dm.remove("চোখ")      # → True if existed
+```
+
+#### File operations
+
+```python
+# Replace in-memory data from a JSON file
+dm.load("my_dataset.json")
+
+# Merge another dataset in (returns number of new words added)
+added = dm.merge("community_dataset.json")
+print(f"{added} new words merged")
+
+# Export
+dm.export("synonyms.json")
+dm.export("synonyms.csv", fmt="csv")
+```
+
+CSV format:
+
+```
+word,synonyms,count
+চোখ,চক্ষু | নেত্র | লোচন | আঁখি,4
+```
+
+#### Stats
+
+```python
+dm.stats()
+# Words         : 1 250
+# Total synonyms: 6 430
+# Avg per word  : 5.14
+# Source        : /home/user/.bangla_synonyms/dataset.json
+#
+# Top 5 words:
+#   চোখ: চক্ষু, নেত্র, লোচন, আঁখি...
+```
+
+#### Downloading the community dataset
+
+```python
+dm.download()           # download from official GitHub release
+dm.download(force=True) # re-download even if already present
+dm.download(url="https://example.com/custom_dataset.json")
+```
+
+---
+
+### WordlistFetcher
+
+Fetches lists of Bangla words from the Wiktionary API.
+
+```python
+from bangla_synonyms.core import WordlistFetcher
+
+wf    = WordlistFetcher()
+words = wf.fetch(limit=500)
+# Fetching up to 500 words from Wiktionary…
+# Got 487 Bangla words
+
+# Only words not already in your dataset
+dm  = DatasetManager()
+new = wf.filter_new(words, dm)
+
+# Save / load word lists
+wf.save(words, "word_list.txt")
+loaded = wf.load("word_list.txt")
+```
+
+---
+
+### BatchScraper
+
+Bulk-scrape synonyms for many words with live progress output and
+safe resume support.
+
+```python
+from bangla_synonyms.core import BatchScraper, DatasetManager
+
+dm      = DatasetManager()
+scraper = BatchScraper(dataset=dm, delay=1.0)
+```
+
+#### Parameters
+
+| Parameter    | Type             | Default      | Description                 |
+| ------------ | ---------------- | ------------ | --------------------------- |
+| `dataset`    | `DatasetManager` | new instance | Where to read / write       |
+| `delay`      | `float`          | `1.0`        | Seconds between requests    |
+| `timeout`    | `int`            | `10`         | Request timeout (seconds)   |
+| `save_every` | `int`            | `50`         | Flush to disk every N words |
+
+#### `run(words, skip_existing=True, show_progress=True)`
+
+```python
+words  = ["চোখ", "মা", "আকাশ", "নদী", "সুন্দর"]
+result = scraper.run(words)
+# [1/5] চোখ: ✓ চক্ষু, নেত্র, লোচন...
+# [2/5] মা: ✓ জননী, মাতা...
+# [3/5] আকাশ: ✓ গগন, অম্বর...
+# ...
+# Done: 5 found, 0 errors, 0 not found
+```
+
+- `skip_existing=True` (default) skips words already in `dataset` —
+  safe to re-run after interruption.
+- Returns only **newly scraped** words.
+
+#### `run_from_wiktionary(limit=200)`
+
+Fetch word list then scrape them all in one call:
+
+```python
+scraper.run_from_wiktionary(limit=500)
+```
+
+---
+
+## CLI
+
+Install the package and the `bangla-synonyms` command becomes available.
+
+### `get`
+
+```bash
+# Single word
+bangla-synonyms get চোখ
+
+# Multiple words
+bangla-synonyms get চোখ মা সুন্দর
+
+# Offline (local dataset only)
+bangla-synonyms get চোখ --offline
+
+# Custom delay
+bangla-synonyms get চোখ মা --delay 2.0
+```
+
+### `build`
+
+Scrape Wiktionary and expand the local dataset.
+
+```bash
+bangla-synonyms build
+bangla-synonyms build --limit 500
+bangla-synonyms build --limit 1000 --delay 2.0
+```
+
+### `stats`
+
+```bash
+bangla-synonyms stats
+```
+
+### `export`
+
+```bash
+bangla-synonyms export synonyms.json
+bangla-synonyms export synonyms.csv --format csv
+```
+
+### `download`
+
+Download the full community dataset (~10 000 words).
+
+```bash
+bangla-synonyms download
+bangla-synonyms download --force      # re-download
+bangla-synonyms download --url https://example.com/custom.json
+```
+
+### Global flags
+
+```bash
+bangla-synonyms --version
+bangla-synonyms --help
+bangla-synonyms get --help
+```
+
+---
+
+## Project Layout
+
+```
+bangla-synonyms/
+│
+├── bangla_synonyms/
+│   ├── __init__.py          ← public API: BanglaSynonyms, Scrapper
+│   ├── synonyms.py          ← BanglaSynonyms class
+│   ├── _scrapper.py         ← Scrapper class
+│   ├── cli.py               ← CLI + importable helpers
+│   │
+│   ├── core/
+│   │   ├── __init__.py      ← DatasetManager, WordlistFetcher, BatchScraper
+│   │   └── _wikitext.py     ← internal scraping helpers (not public API)
+│   │
+│   └── data/
+│       └── builtin_dataset.json   ← bundled starter dataset
+│
+├── tests/
+│   ├── test_dataset.py
+│   ├── test_scrapper.py
+│   └── test_cli.py
+│
+├── pyproject.toml
+└── README.md
+```
+
+### Import hierarchy
+
+```
+bangla_synonyms          ← BanglaSynonyms, Scrapper
+bangla_synonyms.core     ← DatasetManager, WordlistFetcher, BatchScraper
+bangla_synonyms.cli      ← get(), build(), stats()  +  CLI
+bangla_synonyms.core._wikitext   ← internal only
+```
+
+---
+
+## How It Works
+
+### Dataset layers
+
+| Priority    | Location                                    | Description                                    |
+| ----------- | ------------------------------------------- | ---------------------------------------------- |
+| 1 (highest) | `~/.bangla_synonyms/dataset.json`           | User's local dataset — grows with every scrape |
+| 2           | `bangla_synonyms/data/builtin_dataset.json` | Bundled starter dataset                        |
+
+### Scraping flow
+
+1. Word is looked up in the local dataset.
+2. If found → return immediately (no network).
+3. If not found and `offline=False` → fetch from `bn.wiktionary.org`.
+   - First tries the **wikitext API** (fastest, structured).
+   - Falls back to **HTML parsing** if wikitext yields nothing.
+4. If `auto_save=True` → merge result into the user dataset.
+
+---
+
+## Contributing
+
+```bash
+git clone https://github.com/bangla-nlp/bangla-synonyms
+cd bangla-synonyms
+pip install -e ".[dev]"
+pytest
+```
+
+Pull requests are welcome — especially new entries for the built-in dataset.
+
+---
+
+## License
+
+MIT © bangla-nlp contributors
