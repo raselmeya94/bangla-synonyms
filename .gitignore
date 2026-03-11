@@ -1,0 +1,34 @@
+# Downloaded dataset — not tracked in git
+bangla_synonyms_data/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Exported files from demo/CLI
+synonyms_export.json
+synonyms_export.csv
+*.json
+*.csv
+!pyproject.toml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Test cache
+.pytest_cache/
+.coverage
