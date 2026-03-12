@@ -11,6 +11,9 @@ bangla_synonyms.egg-info/entry_points.txt
 bangla_synonyms.egg-info/requires.txt
 bangla_synonyms.egg-info/top_level.txt
 bangla_synonyms/core/__init__.py
+bangla_synonyms/core/_english_bangla.py
+bangla_synonyms/core/_quality.py
+bangla_synonyms/core/_shabdkosh.py
 bangla_synonyms/core/_wikitext.py
 tests/test_cli.py
 tests/test_dataset.py

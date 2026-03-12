@@ -1,20 +1,29 @@
 """
 bangla_synonyms.cli
 --------------------
-Command-line interface — also fully importable as a Python module.
+Command-line interface — also importable as a Python module.
 
 Terminal usage
 --------------
+    bangla-synonyms download
+    bangla-synonyms download --version mini
+    bangla-synonyms download --force
+
     bangla-synonyms get চোখ
     bangla-synonyms get চোখ মা সুন্দর
     bangla-synonyms get চোখ --offline
+    bangla-synonyms get চোখ --sources wiktionary
+    bangla-synonyms get চোখ --sources wiktionary --sources shabdkosh
+    bangla-synonyms get চোখ --no-merge
+
     bangla-synonyms build
     bangla-synonyms build --limit 500 --delay 2.0
+    bangla-synonyms build --sources wiktionary
+    bangla-synonyms build --no-merge
+
     bangla-synonyms stats
     bangla-synonyms export synonyms.json
     bangla-synonyms export synonyms.csv --format csv
-    bangla-synonyms download
-    bangla-synonyms download --force
 
 In-code usage
 -------------
@@ -22,19 +31,33 @@ In-code usage
 
     get(["চোখ", "মা"])
     get(["চোখ"], offline=True)
+    get(["চোখ"], sources=["wiktionary"])
+    get(["চোখ"], sources=["wiktionary", "shabdkosh"], merge=False)
     build(limit=200, delay=1.0)
+    build(sources=["wiktionary"])
     stats()
 """
 from __future__ import annotations
 
+import sys
+
 import click
-from bangla_synonyms import Scrapper
-from bangla_synonyms.core import DatasetManager, BatchScraper, WordlistFetcher
+
+from bangla_synonyms import BanglaSynonyms, Scrapper
+from bangla_synonyms.core import (
+    BatchScraper, DatasetManager, DEFAULT_SOURCES, SOURCES, WordlistFetcher,
+)
 
 
 # ── Importable helpers ────────────────────────────────────────
 
-def get(words: list[str], offline: bool = False) -> dict[str, list[str]]:
+def get(
+    words:   list,
+    offline: bool       = False,
+    sources: list | None = None,
+    merge:   bool       = True,
+    delay:   float      = 1.0,
+) -> dict:
     """
     Look up synonyms for a list of words and print the results.
 
@@ -42,19 +65,13 @@ def get(words: list[str], offline: bool = False) -> dict[str, list[str]]:
     ----------
     words   : list of Bangla words
     offline : use local dataset only (no internet)
+    sources : which sources to use (default: all)
+    merge   : merge all source results (True) or stop at first hit (False)
+    delay   : seconds between requests
 
-    Returns
-    -------
-    dict mapping each word to its synonym list
-
-    Example
-    -------
-        from bangla_synonyms.cli import get
-
-        get(["চোখ", "মা"])
-        get(["চোখ"], offline=True)
+    Returns dict[word -> list[str]].
     """
-    sc     = Scrapper(offline=offline)
+    sc     = Scrapper(offline=offline, sources=sources, merge=merge, delay=delay)
     result = sc.get_many(words)
     for word, syns in result.items():
         line = ", ".join(syns) if syns else "—"
@@ -62,62 +79,92 @@ def get(words: list[str], offline: bool = False) -> dict[str, list[str]]:
     return result
 
 
-def build(limit: int = 200, delay: float = 1.0) -> int:
+def build(
+    limit:   int        = 200,
+    delay:   float      = 1.0,
+    sources: list | None = None,
+    merge:   bool       = True,
+) -> int:
     """
-    Build / expand the local dataset by scraping Wiktionary.
+    Build / expand the local dataset by scraping.
 
     Parameters
     ----------
-    limit : number of words to scrape (default: 200)
-    delay : seconds between requests  (default: 1.0)
+    limit   : number of words to scrape
+    delay   : seconds between requests
+    sources : which sources to use (default: all)
+    merge   : merge all source results (True) or stop at first hit (False)
 
-    Returns
-    -------
-    Number of words newly added
-
-    Example
-    -------
-        from bangla_synonyms.cli import build
-
-        build(limit=500)
+    Returns number of words newly added.
     """
     dm      = DatasetManager()
-    scraper = BatchScraper(dataset=dm, delay=delay)
+    scraper = BatchScraper(dataset=dm, delay=delay, sources=sources, merge=merge)
     result  = scraper.run_from_wiktionary(limit=limit)
     return len(result)
 
 
 def stats() -> dict:
-    """
-    Print and return dataset statistics.
-
-    Example
-    -------
-        from bangla_synonyms.cli import stats
-
-        stats()
-    """
+    """Print and return dataset statistics."""
     return DatasetManager().stats()
 
 
-# ── CLI group ─────────────────────────────────────────────────
+# ── CLI ───────────────────────────────────────────────────────
+
+_SOURCE_CHOICES = list(SOURCES.keys())
+_SOURCES_HELP   = (
+    "Source to use (repeatable). "
+    "Choices: " + ", ".join(_SOURCE_CHOICES) +
+    f". Default: all ({', '.join(DEFAULT_SOURCES)})"
+)
+
 
 @click.group()
 @click.version_option("1.0.0", prog_name="bangla-synonyms")
 def main() -> None:
-    """🇧🇩 Bangla synonym lookup — offline dataset + live Wiktionary."""
+    """Bangla synonym lookup — offline dataset + live scraping."""
+
+
+# ── download ──────────────────────────────────────────────────
+
+@main.command("download")
+@click.option(
+    "--version", "-v", default="latest", show_default=True,
+    type=click.Choice(["latest", "mini"]),
+    help="Dataset version to download.",
+)
+@click.option("--force", is_flag=True, help="Re-download even if dataset exists.")
+def download_cmd(version: str, force: bool) -> None:
+    """
+    Download the community dataset from GitHub Releases.
+
+    \b
+    Examples:
+        bangla-synonyms download
+        bangla-synonyms download --version mini
+        bangla-synonyms download --force
+    """
+    BanglaSynonyms.download(version=version, force=force)
 
 
 # ── get ───────────────────────────────────────────────────────
 
 @main.command("get")
 @click.argument("words", nargs=-1, required=True)
-@click.option("--offline", is_flag=True, help="Local dataset only, no internet")
+@click.option("--offline", is_flag=True, help="Local dataset only, no internet.")
+@click.option(
+    "--sources", "-s", multiple=True,
+    type=click.Choice(_SOURCE_CHOICES),
+    help=_SOURCES_HELP,
+)
+@click.option(
+    "--no-merge", "no_merge", is_flag=True,
+    help="Stop at first source that returns results (don't merge all sources).",
+)
 @click.option(
     "--delay", "-d", default=1.0, show_default=True,
-    help="Seconds between requests",
+    help="Seconds between requests.",
 )
-def get_cmd(words: tuple[str, ...], offline: bool, delay: float) -> None:
+def get_cmd(words: tuple, offline: bool, sources: tuple, no_merge: bool, delay: float) -> None:
     """
     Look up synonyms for one or more words.
 
@@ -126,8 +173,21 @@ def get_cmd(words: tuple[str, ...], offline: bool, delay: float) -> None:
         bangla-synonyms get চোখ
         bangla-synonyms get চোখ মা সুন্দর
         bangla-synonyms get চোখ --offline
+        bangla-synonyms get চোখ --sources wiktionary
+        bangla-synonyms get চোখ --sources wiktionary --sources shabdkosh
+        bangla-synonyms get চোখ --no-merge
     """
-    get(list(words), offline=offline)
+    active_sources = list(sources) if sources else None
+    sc = Scrapper(
+        offline=offline,
+        delay=delay,
+        sources=active_sources,
+        merge=not no_merge,
+    )
+    result = sc.get_many(list(words))
+    for word, syns in result.items():
+        line = ", ".join(syns) if syns else "—"
+        print(f"{word}: {line}")
 
 
 # ── build ─────────────────────────────────────────────────────
@@ -135,23 +195,37 @@ def get_cmd(words: tuple[str, ...], offline: bool, delay: float) -> None:
 @main.command("build")
 @click.option(
     "--limit", "-l", default=200, show_default=True,
-    help="Number of words to scrape",
+    help="Number of words to scrape from Wiktionary.",
 )
 @click.option(
     "--delay", "-d", default=1.0, show_default=True,
-    help="Delay between requests (seconds)",
+    help="Seconds between requests.",
 )
-def build_cmd(limit: int, delay: float) -> None:
+@click.option(
+    "--sources", "-s", multiple=True,
+    type=click.Choice(_SOURCE_CHOICES),
+    help=_SOURCES_HELP,
+)
+@click.option(
+    "--no-merge", "no_merge", is_flag=True,
+    help="Stop at first source that returns results.",
+)
+def build_cmd(limit: int, delay: float, sources: tuple, no_merge: bool) -> None:
     """
-    Scrape Wiktionary and build / expand the local dataset.
+    Scrape and build / expand the local dataset.
 
     \b
     Examples:
         bangla-synonyms build
         bangla-synonyms build --limit 500
         bangla-synonyms build --delay 2.0
+        bangla-synonyms build --sources wiktionary
+        bangla-synonyms build --sources wiktionary --sources shabdkosh
+        bangla-synonyms build --no-merge
     """
-    build(limit=limit, delay=delay)
+    active_sources = list(sources) if sources else None
+    added = build(limit=limit, delay=delay, sources=active_sources, merge=not no_merge)
+    print(f"[bangla-synonyms] {added} new word(s) added to dataset.")
 
 
 # ── stats ─────────────────────────────────────────────────────
@@ -169,7 +243,7 @@ def stats_cmd() -> None:
 @click.option(
     "--format", "-f", "fmt", default="json", show_default=True,
     type=click.Choice(["json", "csv"]),
-    help="Output format",
+    help="Output format.",
 )
 def export_cmd(output: str, fmt: str) -> None:
     """
@@ -180,24 +254,11 @@ def export_cmd(output: str, fmt: str) -> None:
         bangla-synonyms export synonyms.json
         bangla-synonyms export synonyms.csv --format csv
     """
-    DatasetManager().export(output, fmt=fmt)
-
-
-# ── download ──────────────────────────────────────────────────
-
-@main.command("download")
-@click.option("--url", default=None, help="Custom download URL")
-@click.option("--force", is_flag=True, help="Re-download even if dataset exists")
-def download_cmd(url: str | None, force: bool) -> None:
-    """
-    Download the full community dataset (~10 000 words) from GitHub Releases.
-
-    \b
-    Examples:
-        bangla-synonyms download
-        bangla-synonyms download --force
-    """
-    DatasetManager().download(url=url, force=force)
+    try:
+        DatasetManager().export(output, fmt=fmt)
+    except (OSError, ValueError) as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
 
 
 # ── entry-point ───────────────────────────────────────────────

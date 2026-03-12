@@ -37,7 +37,7 @@ dependencies = [
 [project.urls]
 Homepage   = "https://github.com/raselmeya94/bangla-synonyms"
 Repository = "https://github.com/raselmeya94/bangla-synonyms"
-Issues     = "https://github.com/raselmeya94/bangla-synonymsissues"
+Issues     = "https://github.com/raselmeya94/bangla-synonyms/issues"
 
 [project.scripts]
 bangla-synonyms = "bangla_synonyms.cli:main"
