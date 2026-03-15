@@ -33,6 +33,19 @@ dependencies = [
     "click>=8.1"
 ]
 
+# Optional developer dependencies
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",        # Testing framework
+    "pytest-cov>=4.0",    # Test coverage
+    "black>=23.0",        # Code formatting
+    "isort>=5.0",         # Import sorting
+    "mypy>=1.0",          # Type checking
+    "pre-commit>=3.0",    # Git hooks
+    "twine>=4.0",         # For building/uploading packages
+    "build>=1.0"          # For building wheels/source
+]
+
 [project.urls]
 Homepage   = "https://github.com/raselmeya94/bangla-synonyms"
 Repository = "https://github.com/raselmeya94/bangla-synonyms"

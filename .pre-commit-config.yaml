@@ -1,0 +1,9 @@
+repos:
+  - repo: https://github.com/psf/black
+    rev: 23.7.0 # Black formatter version
+  - repo: https://github.com/pre-commit/mirrors-isort
+    rev: v5.12.0 # isort version
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.5.0 # mypy version
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0 # standard hooks like trailing-whitespace
