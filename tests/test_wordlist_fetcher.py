@@ -7,6 +7,7 @@ Network tests are marked and skipped by default.
 Based on: wordlist_fetcher_api_text.py
 """
 import pytest
+
 from bangla_synonyms.core import DatasetManager, WordlistFetcher
 
 
@@ -22,36 +23,37 @@ def dm():
 
 # ── Offline / no-network tests ─────────────────────────────────────────────
 
+
 class TestWordlistFetcherOffline:
     def test_filter_new_removes_known_words(self, wf, dm):
         """Words already in the dataset should be filtered out."""
         known = list(dm.all_words())
-        new   = wf.filter_new(known, dm)
+        new = wf.filter_new(known, dm)
         assert new == []
 
     def test_filter_new_keeps_unknown_words(self, wf, dm):
-        words    = ["xyznotaword1", "xyznotaword2"]
+        words = ["xyznotaword1", "xyznotaword2"]
         filtered = wf.filter_new(words, dm)
         assert filtered == words
 
     def test_filter_new_mixed(self, wf, dm):
-        known   = dm.all_words()[:2]
+        known = dm.all_words()[:2]
         unknown = ["xyznotaword"]
-        result  = wf.filter_new(list(known) + unknown, dm)
+        result = wf.filter_new(list(known) + unknown, dm)
         assert unknown[0] in result
         for w in known:
             assert w not in result
 
     def test_save_and_load(self, wf, tmp_path):
-        words    = ["চোখ", "মা", "নদী", "আকাশ"]
-        path     = str(tmp_path / "wordlist.txt")
+        words = ["চোখ", "মা", "নদী", "আকাশ"]
+        path = str(tmp_path / "wordlist.txt")
         wf.save(words, path)
         reloaded = wf.load(path)
         assert reloaded == words
 
     def test_save_load_preserves_order(self, wf, tmp_path):
         words = ["ঘ", "ক", "চ", "খ"]
-        path  = str(tmp_path / "ordered.txt")
+        path = str(tmp_path / "ordered.txt")
         wf.save(words, path)
         assert wf.load(path) == words
 
@@ -61,6 +63,7 @@ class TestWordlistFetcherOffline:
 
 
 # ── Network tests — skipped by default ────────────────────────────────────
+
 
 @pytest.mark.slow
 @pytest.mark.network
@@ -99,14 +102,14 @@ class TestWordlistFetcherOnline:
         assert len(words) <= 100
 
     def test_filter_new_after_fetch(self, wf, dm):
-        words     = wf.fetch(limit=20)
+        words = wf.fetch(limit=20)
         new_words = wf.filter_new(words, dm)
         assert isinstance(new_words, list)
         assert len(new_words) <= len(words)
 
     def test_save_reload_after_fetch(self, wf, tmp_path):
-        words    = wf.fetch(limit=10)
-        path     = str(tmp_path / "fetched.txt")
+        words = wf.fetch(limit=10)
+        path = str(tmp_path / "fetched.txt")
         wf.save(words, path)
         reloaded = wf.load(path)
         assert reloaded == words

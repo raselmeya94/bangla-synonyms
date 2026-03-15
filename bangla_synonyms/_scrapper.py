@@ -24,13 +24,8 @@ import logging
 import time
 from pathlib import Path
 
-from .core import (
-    DatasetManager,
-    DEFAULT_SOURCES,
-    SOURCES,
-    reload_dataset,
-    fetch_with_sources_raw,
-)
+from .core import (DEFAULT_SOURCES, SOURCES, DatasetManager,
+                   fetch_with_sources_raw, reload_dataset)
 from .core._wikitext import make_session
 
 log = logging.getLogger(__name__)
@@ -145,7 +140,9 @@ class Scrapper:
         url = _DATASET_URLS.get(version)
         if url is None:
             available = ", ".join(f'"{v}"' for v in _DATASET_URLS)
-            print(f"[bangla-synonyms] unknown version '{version}'. available: {available}")
+            print(
+                f"[bangla-synonyms] unknown version '{version}'. available: {available}"
+            )
             return
 
         save_path = Path.cwd() / "bangla_synonyms_data" / "dataset.json"
@@ -164,10 +161,14 @@ class Scrapper:
             resp = _requests.get(url, stream=True, timeout=30)
             resp.raise_for_status()
         except _requests.exceptions.Timeout:
-            print("[bangla-synonyms] download timed out. check your connection and try again.")
+            print(
+                "[bangla-synonyms] download timed out. check your connection and try again."
+            )
             return
         except _requests.exceptions.ConnectionError:
-            print("[bangla-synonyms] could not connect. check your internet connection.")
+            print(
+                "[bangla-synonyms] could not connect. check your internet connection."
+            )
             return
         except _requests.exceptions.HTTPError as e:
             print(f"[bangla-synonyms] server returned HTTP {e.response.status_code}.")
@@ -176,8 +177,8 @@ class Scrapper:
             print(f"[bangla-synonyms] download failed: {e}")
             return
 
-        total     = int(resp.headers.get("content-length", 0))
-        received  = 0
+        total = int(resp.headers.get("content-length", 0))
+        received = 0
         bar_width = 30
 
         try:
@@ -186,10 +187,10 @@ class Scrapper:
                     fh.write(chunk)
                     received += len(chunk)
                     if total:
-                        pct    = received / total
+                        pct = received / total
                         filled = int(bar_width * pct)
-                        bar    = "█" * filled + "░" * (bar_width - filled)
-                        kb     = received // 1024
+                        bar = "█" * filled + "░" * (bar_width - filled)
+                        kb = received // 1024
                         print(f"\r  [{bar}] {kb} KB", end="", flush=True)
         except OSError as e:
             print(f"\n[bangla-synonyms] failed to write file: {e}")
@@ -205,12 +206,12 @@ class Scrapper:
 
     def __init__(
         self,
-        offline:   bool        = False,
-        auto_save: bool        = False,
-        delay:     float       = 1.0,
-        timeout:   int         = 10,
-        sources:   list | None = None,
-        merge:     bool        = True,
+        offline: bool = False,
+        auto_save: bool = False,
+        delay: float = 1.0,
+        timeout: int = 10,
+        sources: list | None = None,
+        merge: bool = True,
     ) -> None:
         if sources is not None:
             invalid = [s for s in sources if s not in SOURCES]
@@ -220,14 +221,14 @@ class Scrapper:
                     f"Valid sources: {list(SOURCES.keys())}"
                 )
 
-        self.offline   = offline
+        self.offline = offline
         self.auto_save = auto_save
-        self.delay     = delay
-        self.timeout   = timeout
-        self.sources   = sources
-        self.merge     = merge
+        self.delay = delay
+        self.timeout = timeout
+        self.sources = sources
+        self.merge = merge
 
-        self._dm      = DatasetManager()
+        self._dm = DatasetManager()
         self._session = make_session() if not offline else None
 
     # ------------------------------------------------------------------
@@ -301,17 +302,21 @@ class Scrapper:
         # 1. Local dataset — no network call
         cached = self._dm.get(word)
         if cached:
-            log.debug("[scrapper] '%s' found in local dataset (%d synonyms)", word, len(cached))
+            log.debug(
+                "[scrapper] '%s' found in local dataset (%d synonyms)",
+                word,
+                len(cached),
+            )
             if raw:
                 return {
-                    "word":            word,
-                    "source":          "local",
+                    "word": word,
+                    "source": "local",
                     "sources_results": {"local": cached},
-                    "results":         [{"synonym": w, "source": "local"} for w in cached],
-                    "words":           cached,
-                    "sources_hit":     ["local"],
-                    "sources_tried":   ["local"],
-                    "quality":         "local",
+                    "results": [{"synonym": w, "source": "local"} for w in cached],
+                    "words": cached,
+                    "sources_hit": ["local"],
+                    "sources_tried": ["local"],
+                    "quality": "local",
                 }
             return cached
 
@@ -319,35 +324,39 @@ class Scrapper:
         if self.offline or self._session is None:
             if raw:
                 return {
-                    "word":            word,
-                    "source":          None,
+                    "word": word,
+                    "source": None,
                     "sources_results": {},
-                    "results":         [],
-                    "words":           [],
-                    "sources_hit":     [],
-                    "sources_tried":   [],
-                    "quality":         "empty",
+                    "results": [],
+                    "words": [],
+                    "sources_hit": [],
+                    "sources_tried": [],
+                    "quality": "empty",
                 }
             return []
 
         # 3. Live scrape
         log.debug("[scrapper] fetching online for '%s'", word)
         raw_result = fetch_with_sources_raw(
-            word, self._session, self.timeout, self.sources, self.merge,
+            word,
+            self._session,
+            self.timeout,
+            self.sources,
+            self.merge,
         )
 
         if raw_result is None:
             log.warning("[scrapper] all sources returned network errors for '%s'", word)
             if raw:
                 return {
-                    "word":            word,
-                    "source":          None,
+                    "word": word,
+                    "source": None,
                     "sources_results": {},
-                    "results":         [],
-                    "words":           [],
-                    "sources_hit":     [],
-                    "sources_tried":   list(self.active_sources),
-                    "quality":         "empty",
+                    "results": [],
+                    "words": [],
+                    "sources_hit": [],
+                    "sources_tried": list(self.active_sources),
+                    "quality": "empty",
                 }
             return []
 
@@ -356,7 +365,9 @@ class Scrapper:
             self._dm.add(word, synonyms)
 
         if raw:
-            top_source = raw_result["sources_hit"][0] if raw_result["sources_hit"] else None
+            top_source = (
+                raw_result["sources_hit"][0] if raw_result["sources_hit"] else None
+            )
             return {**raw_result, "source": top_source}
 
         return synonyms
@@ -395,14 +406,14 @@ class Scrapper:
             # → {'চোখ': {"word": "চোখ", ...}, 'মা': {"word": "মা", ...}}
         """
         result: dict = {}
-        needs_delay  = False
+        needs_delay = False
 
         for word in words:
             is_cached = self._dm.has(word.strip())
             if needs_delay and not is_cached and not self.offline:
                 time.sleep(self.delay)
             result[word] = self.get(word, raw=raw)
-            needs_delay  = not is_cached and not self.offline
+            needs_delay = not is_cached and not self.offline
 
         return result
 
@@ -436,11 +447,10 @@ class Scrapper:
         if self.offline:
             mode = "offline"
         else:
-            src  = ", ".join(self.active_sources)
+            src = ", ".join(self.active_sources)
             mode = f"online [sources={src}, delay={self.delay}s, merge={self.merge}]"
-        return f"Scrapper(mode={mode}, auto_save={self.auto_save})" 
-    
-    
+        return f"Scrapper(mode={mode}, auto_save={self.auto_save})"
+
     def __dir__(self) -> list:
         """Expose only public Scrapper attributes in autocomplete."""
         return [

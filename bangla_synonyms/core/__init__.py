@@ -86,25 +86,28 @@ import logging
 import time
 from pathlib import Path
 
-from ._wikitext       import fetch_synonyms       as _fetch_wiktionary
-from ._wikitext       import fetch_word_list, make_session
-from ._shabdkosh      import fetch_shabdkosh      as _fetch_shabdkosh
+from ._embedding import EmbeddingSource
+from ._embedding import fetch_embedding as _fetch_embedding
+from ._embedding import register_embedding_source
 from ._english_bangla import fetch_english_bangla as _fetch_english_bangla
-from ._quality        import apply_quality
-from ._embedding      import (
-    EmbeddingSource,
-    register_embedding_source,
-    fetch_embedding as _fetch_embedding,
-)
+from ._quality import apply_quality
+from ._shabdkosh import fetch_shabdkosh as _fetch_shabdkosh
+from ._wikitext import fetch_synonyms as _fetch_wiktionary
+from ._wikitext import fetch_word_list, make_session
 
 log = logging.getLogger(__name__)
 
 __all__ = [
-    "SOURCES", "DEFAULT_SOURCES",
-    "fetch_with_sources", "fetch_with_sources_raw",
+    "SOURCES",
+    "DEFAULT_SOURCES",
+    "fetch_with_sources",
+    "fetch_with_sources_raw",
     "apply_quality",
-    "DatasetManager", "WordlistFetcher", "BatchScraper",
-    "reload_dataset", "make_session",
+    "DatasetManager",
+    "WordlistFetcher",
+    "BatchScraper",
+    "reload_dataset",
+    "make_session",
     "EmbeddingSource",
     "register_embedding_source",
 ]
@@ -118,8 +121,8 @@ __all__ = [
 #: Each value is a callable: ``(word, session, timeout) -> list[str] | None``.
 #: Returns ``None`` on network error, ``[]`` when the word is not found.
 SOURCES: dict[str, object] = {
-    "wiktionary":     _fetch_wiktionary,
-    "shabdkosh":      _fetch_shabdkosh,
+    "wiktionary": _fetch_wiktionary,
+    "shabdkosh": _fetch_shabdkosh,
     "english_bangla": _fetch_english_bangla,
 }
 
@@ -133,12 +136,13 @@ DEFAULT_SOURCES: list[str] = ["wiktionary", "shabdkosh", "english_bangla"]
 # Source-level fetch helpers
 # ===========================================================================
 
+
 def fetch_with_sources(
-    word:    str,
+    word: str,
     session,
-    timeout: int         = 10,
+    timeout: int = 10,
     sources: list | None = None,
-    merge:   bool        = True,
+    merge: bool = True,
 ) -> list | None:
     """
     Fetch synonyms from the configured sources and return a flat list.
@@ -187,11 +191,11 @@ def fetch_with_sources(
 
 
 def fetch_with_sources_raw(
-    word:    str,
+    word: str,
     session,
-    timeout: int         = 10,
+    timeout: int = 10,
     sources: list | None = None,
-    merge:   bool        = True,
+    merge: bool = True,
 ) -> dict | None:
     """
     Fetch synonyms from the configured sources and return full metadata.
@@ -275,10 +279,10 @@ def fetch_with_sources_raw(
         raw["sources_hit"]  # → ['wiktionary', 'shabdkosh']
         raw["quality"]      # → 'wikiconfirmed'
     """
-    active           = sources if sources is not None else DEFAULT_SOURCES
-    results:    list[dict] = []
-    seen:       set[str]   = set()
-    any_error               = False
+    active = sources if sources is not None else DEFAULT_SOURCES
+    results: list[dict] = []
+    seen: set[str] = set()
+    any_error = False
     sources_hit: list[str] = []
     sources_results: dict[str, list[str]] = {}
 
@@ -308,7 +312,9 @@ def fetch_with_sources_raw(
                 sources_hit.append(name)
                 log.debug(
                     "[sources] '%s' contributed %d synonym(s) for '%s'",
-                    name, added, word,
+                    name,
+                    added,
+                    word,
                 )
 
             if not merge:
@@ -316,12 +322,12 @@ def fetch_with_sources_raw(
 
     if results:
         raw_out = {
-            "word":            word,
+            "word": word,
             "sources_results": sources_results,
-            "results":         results,
-            "words":           [r["synonym"] for r in results],
-            "sources_hit":     sources_hit,
-            "sources_tried":   list(active),
+            "results": results,
+            "words": [r["synonym"] for r in results],
+            "sources_hit": sources_hit,
+            "sources_tried": list(active),
         }
         return apply_quality(raw_out)
 
@@ -329,19 +335,20 @@ def fetch_with_sources_raw(
         return None
 
     return {
-        "word":            word,
+        "word": word,
         "sources_results": {},
-        "results":         [],
-        "words":           [],
-        "sources_hit":     [],
-        "sources_tried":   list(active),
-        "quality":         "empty",
+        "results": [],
+        "words": [],
+        "sources_hit": [],
+        "sources_tried": list(active),
+        "quality": "empty",
     }
 
 
 # ===========================================================================
 # Dataset path + shared in-memory store
 # ===========================================================================
+
 
 def _dataset_path() -> Path:
     """Return the dataset path relative to the current working directory."""
@@ -377,6 +384,7 @@ def reload_dataset() -> None:
 # Disk I/O helpers (internal)
 # ===========================================================================
 
+
 def _load() -> dict:
     """Load the dataset JSON from disk. Returns {} if missing or unreadable."""
     path = _dataset_path()
@@ -409,6 +417,7 @@ def _save(data: dict) -> None:
 # ===========================================================================
 # DatasetManager
 # ===========================================================================
+
 
 class DatasetManager:
     """
@@ -526,7 +535,7 @@ class DatasetManager:
             return
 
         existing = set(self._data.get(word, []))
-        merged   = list(self._data.get(word, []))
+        merged = list(self._data.get(word, []))
         for s in synonyms:
             s = s.strip()
             if s and s not in existing and s != word:
@@ -583,8 +592,7 @@ class DatasetManager:
         if not word:
             return
         self._data[word] = [
-            s.strip() for s in synonyms
-            if s.strip() and s.strip() != word
+            s.strip() for s in synonyms if s.strip() and s.strip() != word
         ]
         if save:
             _save(self._data)
@@ -627,9 +635,7 @@ class DatasetManager:
             with open(path, encoding="utf-8") as fh:
                 incoming: dict = json.load(fh)
         except (json.JSONDecodeError, OSError) as exc:
-            raise ValueError(
-                f"Failed to merge dataset from '{path}': {exc}"
-            ) from exc
+            raise ValueError(f"Failed to merge dataset from '{path}': {exc}") from exc
 
         added = 0
         for word, syns in incoming.items():
@@ -725,21 +731,16 @@ class DatasetManager:
             ``source``.
         """
         total_syns = sum(len(v) for v in self._data.values())
-        avg        = round(total_syns / len(self._data), 2) if self._data else 0
-        top5       = sorted(
-            self._data.items(), key=lambda x: len(x[1]), reverse=True
-        )[:5]
-        path   = _dataset_path()
-        source = (
-            str(path) if path.exists()
-            else "no dataset — run Scrapper.download()"
-        )
+        avg = round(total_syns / len(self._data), 2) if self._data else 0
+        top5 = sorted(self._data.items(), key=lambda x: len(x[1]), reverse=True)[:5]
+        path = _dataset_path()
+        source = str(path) if path.exists() else "no dataset — run Scrapper.download()"
 
         result = {
-            "total_words":    len(self._data),
+            "total_words": len(self._data),
             "total_synonyms": total_syns,
-            "avg_per_word":   avg,
-            "source":         source,
+            "avg_per_word": avg,
+            "source": source,
         }
 
         print(f"Words         : {result['total_words']}")
@@ -750,7 +751,7 @@ class DatasetManager:
             print("Top 5 words   :")
             for word, syns in top5:
                 preview = ", ".join(syns[:4])
-                suffix  = " ..." if len(syns) > 4 else ""
+                suffix = " ..." if len(syns) > 4 else ""
                 print(f"  {word}: {preview}{suffix}")
 
         return result
@@ -759,6 +760,7 @@ class DatasetManager:
 # ===========================================================================
 # WordlistFetcher
 # ===========================================================================
+
 
 class WordlistFetcher:
     """
@@ -788,7 +790,7 @@ class WordlistFetcher:
     """
 
     def __init__(self, timeout: int = 10) -> None:
-        self.timeout  = timeout
+        self.timeout = timeout
         self._session = make_session()
 
     def fetch(self, limit: int = 500) -> list:
@@ -888,6 +890,7 @@ class WordlistFetcher:
 # BatchScraper
 # ===========================================================================
 
+
 class BatchScraper:
     """
     Scrape synonyms for large word lists with progress tracking and resume.
@@ -926,27 +929,27 @@ class BatchScraper:
 
     def __init__(
         self,
-        dataset:    DatasetManager | None = None,
-        delay:      float       = 1.0,
-        timeout:    int         = 10,
-        save_every: int         = 50,
-        sources:    list | None = None,
-        merge:      bool        = True,
+        dataset: DatasetManager | None = None,
+        delay: float = 1.0,
+        timeout: int = 10,
+        save_every: int = 50,
+        sources: list | None = None,
+        merge: bool = True,
     ) -> None:
-        self.dataset    = dataset or DatasetManager()
-        self.delay      = delay
-        self.timeout    = timeout
+        self.dataset = dataset or DatasetManager()
+        self.delay = delay
+        self.timeout = timeout
         self.save_every = save_every
-        self.sources    = sources
-        self.merge      = merge
-        self._session   = make_session()
+        self.sources = sources
+        self.merge = merge
+        self._session = make_session()
 
     def run(
         self,
-        words:         list,
-        skip_existing: bool        = True,
-        show_progress: bool        = True,
-        sources:       list | None = None,
+        words: list,
+        skip_existing: bool = True,
+        show_progress: bool = True,
+        sources: list | None = None,
     ) -> dict:
         """
         Scrape synonyms for every word in ``words``.
@@ -983,7 +986,7 @@ class BatchScraper:
         if skip_existing:
             words = [w for w in words if w not in self.dataset]
 
-        total   = len(words)
+        total = len(words)
         scraped: dict = {}
         found = skipped = errors = 0
         width = len(str(total))
@@ -991,7 +994,11 @@ class BatchScraper:
         for i, word in enumerate(words):
             try:
                 syns = fetch_with_sources(
-                    word, self._session, self.timeout, active_sources, self.merge,
+                    word,
+                    self._session,
+                    self.timeout,
+                    active_sources,
+                    self.merge,
                 )
             except Exception as exc:
                 log.error("[batch] unexpected error for '%s': %s", word, exc)
@@ -999,17 +1006,17 @@ class BatchScraper:
 
             if syns is None:
                 errors += 1
-                status  = "❌ network error"
+                status = "❌ network error"
             elif syns:
                 scraped[word] = syns
                 self.dataset.add(word, syns, save=False)
-                found   += 1
-                preview  = ", ".join(syns[:3])
-                suffix   = " ..." if len(syns) > 3 else ""
-                status   = f"✓ {preview}{suffix}"
+                found += 1
+                preview = ", ".join(syns[:3])
+                suffix = " ..." if len(syns) > 3 else ""
+                status = f"✓ {preview}{suffix}"
             else:
                 skipped += 1
-                status   = "— not found"
+                status = "— not found"
 
             if show_progress:
                 print(f"  [{i + 1:>{width}}/{total}] {word}: {status}")
@@ -1055,7 +1062,9 @@ class BatchScraper:
         dict
             ``{word: [synonyms]}`` for newly scraped words, same as ``run()``.
         """
-        print(f"[bangla-synonyms] fetching word list from Wiktionary (limit={limit})...")
+        print(
+            f"[bangla-synonyms] fetching word list from Wiktionary (limit={limit})..."
+        )
         words = fetch_word_list(limit, self._session, self.timeout)
         print(f"[bangla-synonyms] {len(words)} words fetched — starting scrape...")
         return self.run(words, skip_existing=True)

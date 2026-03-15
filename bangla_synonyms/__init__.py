@@ -55,7 +55,7 @@ CLI
 from __future__ import annotations
 
 from ._scrapper import Scrapper
-from .core      import DatasetManager
+from .core import DatasetManager
 
 __version__ = "1.0.0"
 __all__ = ["Scrapper", "download", "get", "get_many", "stats"]

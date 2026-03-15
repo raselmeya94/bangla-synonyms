@@ -1,5 +1,3 @@
-
-
 """
 core/_wikitext.py
 -----------------
@@ -53,11 +51,11 @@ from bs4 import BeautifulSoup
 
 # ── Constants ─────────────────────────────────────────────────
 
-_API_URL    = "https://bn.wiktionary.org/w/api.php"
-_WIKI_BASE  = "https://bn.wiktionary.org/wiki"
+_API_URL = "https://bn.wiktionary.org/w/api.php"
+_WIKI_BASE = "https://bn.wiktionary.org/wiki"
 _USER_AGENT = "bangla-synonyms/1.0 (Bangla NLP; github.com/raselmeya94/bangla-synonyms)"
 
-_BN_RE       = re.compile(r"[\u0980-\u09FF]")
+_BN_RE = re.compile(r"[\u0980-\u09FF]")
 _BANGLA_WORD = re.compile(r"^[\u0980-\u09FF।্ঁ-ঃ]+$")
 _SYN_HEADERS = ["সমার্থক শব্দ", "সমার্থক", "প্রতিশব্দ"]
 
@@ -65,17 +63,15 @@ log = logging.getLogger(__name__)
 
 # ── Compiled regexes ──────────────────────────────────────────
 
-_BLOCK_SYN_RE    = re.compile(r"\{\{(?:স|s|সমার্থক)\|bn\|([^}]+)\}\}")
-_SYN_INLINE_RE   = re.compile(r"\{\{syn\|bn\|([^}]+)\}\}")
-_LINK_TMPL_RE    = re.compile(r"\{\{l\|bn\|([^|}]+)")
-_WIKILINK_RE     = re.compile(r"\[\[([^\]|#]+)\]\]")
-_INLINE_COLON_RE = re.compile(
-    r"(?:সমার্থক শব্দ|সমার্থক|প্রতিশব্দ)\s*[:\-]\s*(.+)"
-)
-_PAREN_TR_RE     = re.compile(r"\([^)]*\)")
+_BLOCK_SYN_RE = re.compile(r"\{\{(?:স|s|সমার্থক)\|bn\|([^}]+)\}\}")
+_SYN_INLINE_RE = re.compile(r"\{\{syn\|bn\|([^}]+)\}\}")
+_LINK_TMPL_RE = re.compile(r"\{\{l\|bn\|([^|}]+)")
+_WIKILINK_RE = re.compile(r"\[\[([^\]|#]+)\]\]")
+_INLINE_COLON_RE = re.compile(r"(?:সমার্থক শব্দ|সমার্থক|প্রতিশব্দ)\s*[:\-]\s*(.+)")
+_PAREN_TR_RE = re.compile(r"\([^)]*\)")
 
 # Pattern H — definition line prefix: # or ## or #*
-_DEF_LINE_RE     = re.compile(r"^#+\*?\s*")
+_DEF_LINE_RE = re.compile(r"^#+\*?\s*")
 
 # A synonym token must consist entirely of Bangla Unicode characters
 # (including vowel signs, conjuncts, hasanta, anusvara, visarga).
@@ -90,6 +86,7 @@ _LEADING_PAREN_RE = re.compile(r"^\([^)]*\)\s*")
 
 # ── Session factory ───────────────────────────────────────────
 
+
 def make_session() -> requests.Session:
     """Retry-enabled session with package User-Agent."""
     from requests.adapters import HTTPAdapter
@@ -103,6 +100,7 @@ def make_session() -> requests.Session:
 
 
 # ── Helpers ───────────────────────────────────────────────────
+
 
 def is_bangla(text: str) -> bool:
     return bool(_BN_RE.search(text))
@@ -133,7 +131,12 @@ def _split_colon_list(raw: str, word: str, seen: list) -> list:
         w = _clean_word(part)
         for token in w.split():
             token = token.strip()
-            if is_bangla(token) and token != word and token not in seen and len(token) > 1:
+            if (
+                is_bangla(token)
+                and token != word
+                and token not in seen
+                and len(token) > 1
+            ):
                 result.append(token)
                 break
     return result
@@ -163,7 +166,7 @@ def _split_outside_parens(text: str) -> list[str]:
     the inner link is not mistakenly extracted as a synonym.
     """
     parts: list[str] = []
-    depth   = 0
+    depth = 0
     current: list[str] = []
     for ch in text:
         if ch == "(":
@@ -241,7 +244,7 @@ def _extract_def_synonyms(line: str, word: str, seen: list) -> list:
             continue
 
         # Isolate the part before any parenthetical example
-        paren_pos    = unit.find("(")
+        paren_pos = unit.find("(")
         before_paren = unit[:paren_pos].strip() if paren_pos != -1 else unit
 
         # Prefer explicit [[wikilink]] in the before-paren section
@@ -253,13 +256,19 @@ def _extract_def_synonyms(line: str, word: str, seen: list) -> list:
         else:
             # No link markup — try plain Bangla token
             clean = re.sub(r"['''\"*#\[\]{}|।]", "", before_paren).strip()
-            if _is_synonym_token(clean) and clean != word and clean not in seen and clean not in result:
+            if (
+                _is_synonym_token(clean)
+                and clean != word
+                and clean not in seen
+                and clean not in result
+            ):
                 result.append(clean)
 
     return result
 
 
 # ── Wikitext parser ───────────────────────────────────────────
+
 
 def _parse_wikitext(word: str, wikitext: str) -> list:
     """
@@ -386,13 +395,19 @@ def _parse_wikitext(word: str, wikitext: str) -> list:
 
 # ── API calls ─────────────────────────────────────────────────
 
-def _fetch_wikitext_api(word: str, session: requests.Session, timeout: int) -> list | None:
+
+def _fetch_wikitext_api(
+    word: str, session: requests.Session, timeout: int
+) -> list | None:
     try:
         resp = session.get(
             _API_URL,
             params={
-                "action": "parse", "page": word,
-                "prop": "wikitext", "format": "json", "formatversion": 2,
+                "action": "parse",
+                "page": word,
+                "prop": "wikitext",
+                "format": "json",
+                "formatversion": 2,
             },
             timeout=timeout,
         )
@@ -437,7 +452,7 @@ def _fetch_html_fallback(word: str, session: requests.Session, timeout: int) -> 
         log.warning("[wiktionary] HTML fallback failed for '%s': %s", word, e)
         return []
 
-    soup     = BeautifulSoup(resp.text, "lxml")
+    soup = BeautifulSoup(resp.text, "lxml")
     synonyms = []
 
     for span in soup.find_all("span", class_="mw-headline"):
@@ -462,7 +477,10 @@ def _fetch_html_fallback(word: str, session: requests.Session, timeout: int) -> 
 
 # ── Public function ───────────────────────────────────────────
 
-def fetch_synonyms(word: str, session: requests.Session, timeout: int = 10) -> list | None:
+
+def fetch_synonyms(
+    word: str, session: requests.Session, timeout: int = 10
+) -> list | None:
     """
     Fetch synonyms from bn.wiktionary.org (wikitext API → HTML fallback).
 
@@ -479,6 +497,7 @@ def fetch_synonyms(word: str, session: requests.Session, timeout: int = 10) -> l
     if result:
         return result
     return _fetch_html_fallback(word, session, timeout)
+
 
 def fetch_word_list(limit: int, session: requests.Session, timeout: int = 10) -> list:
     """
@@ -505,11 +524,15 @@ def fetch_word_list(limit: int, session: requests.Session, timeout: int = 10) ->
     list[str]
         At most ``limit`` Bangla word strings, in Wiktionary page order.
     """
-    words:  list[str] = []
-    params: dict      = {
-        "action": "query", "list": "allpages",
-        "apnamespace": 0, "aplimit": 500,
-        "apfrom": "অ", "format": "json", "formatversion": 2,
+    words: list[str] = []
+    params: dict = {
+        "action": "query",
+        "list": "allpages",
+        "apnamespace": 0,
+        "aplimit": 500,
+        "apfrom": "অ",
+        "format": "json",
+        "formatversion": 2,
     }
 
     while len(words) < limit:
@@ -541,14 +564,17 @@ def fetch_word_list(limit: int, session: requests.Session, timeout: int = 10) ->
 
     return words
 
-
-# def fetch_word_list(limit: int, session: requests.Session, timeout: int = 10) -> list:
+    # def fetch_word_list(limit: int, session: requests.Session, timeout: int = 10) -> list:
     """Fetch a list of Bangla words from the Wiktionary allpages API."""
-    words  = []
+    words = []
     params = {
-        "action": "query", "list": "allpages",
-        "apnamespace": 0, "aplimit": 500,
-        "apfrom": "অ", "format": "json", "formatversion": 2,
+        "action": "query",
+        "list": "allpages",
+        "apnamespace": 0,
+        "aplimit": 500,
+        "apfrom": "অ",
+        "format": "json",
+        "formatversion": 2,
     }
     fetched = 0
 
@@ -571,7 +597,7 @@ def fetch_word_list(limit: int, session: requests.Session, timeout: int = 10) ->
                 words.append(t)
 
         fetched += len(pages)
-        cont     = data.get("continue", {})
+        cont = data.get("continue", {})
         if "apcontinue" in cont and fetched < limit:
             params["apfrom"] = cont["apcontinue"]
             time.sleep(0.3)

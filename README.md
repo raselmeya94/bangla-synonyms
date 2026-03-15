@@ -645,6 +645,8 @@ bangla-synonyms get চোখ --offline
 bangla-synonyms get চোখ --sources wiktionary
 bangla-synonyms get চোখ --sources wiktionary --sources shabdkosh
 bangla-synonyms get চোখ --no-merge
+bangla-synonyms get চোখ --raw
+
 
 # Build / expand the local dataset
 bangla-synonyms build

@@ -48,20 +48,22 @@ from bs4 import BeautifulSoup
 
 # ── Constants ─────────────────────────────────────────────────
 
-_URL    = "https://www.english-bangla.com/bntobn/index/{word}"
-_BN_RE  = re.compile(r"[\u0980-\u09FF]")
-_POS_RE = re.compile(r"/[^/]*/")   # "/বিশেষ্য পদ/" pos markers
+_URL = "https://www.english-bangla.com/bntobn/index/{word}"
+_BN_RE = re.compile(r"[\u0980-\u09FF]")
+_POS_RE = re.compile(r"/[^/]*/")  # "/বিশেষ্য পদ/" pos markers
 
 log = logging.getLogger(__name__)
 
 
 # ── Helpers ───────────────────────────────────────────────────
 
+
 def _is_bangla(text: str) -> bool:
     return bool(_BN_RE.search(text))
 
 
 # ── Public fetch function ─────────────────────────────────────
+
 
 def fetch_english_bangla(word: str, session, timeout: int = 10) -> list | None:
     """
@@ -90,9 +92,9 @@ def fetch_english_bangla(word: str, session, timeout: int = 10) -> list | None:
         log.warning("[english-bangla] request failed for '%s': %s", word, e)
         return None
 
-    soup     = BeautifulSoup(resp.text, "lxml")
+    soup = BeautifulSoup(resp.text, "lxml")
     synonyms = []
-    seen     = set()
+    seen = set()
 
     for block in soup.find_all("div", class_="word-base"):
         fmt = block.find("span", class_="format1")

@@ -6,7 +6,9 @@ Tests for DatasetManager — read, write, merge, export, stats.
 Based on: data_manager_api_test.py
 """
 import json
+
 import pytest
+
 from bangla_synonyms.core import DatasetManager
 
 
@@ -19,7 +21,7 @@ def dm():
 def extra_json(tmp_path):
     """Create a small extra.json file for merge tests."""
     data = {
-        "ছোট":  ["ক্ষুদ্র", "নগণ্য", "অল্প"],
+        "ছোট": ["ক্ষুদ্র", "নগণ্য", "অল্প"],
         "দ্রুত": ["ত্বরিত", "দ্রুতগামী", "বেগবান"],
     }
     p = tmp_path / "extra.json"
@@ -28,6 +30,7 @@ def extra_json(tmp_path):
 
 
 # ── Stats ──────────────────────────────────────────────────────────────────
+
 
 class TestStats:
     def test_stats_returns_dict(self, dm):
@@ -46,6 +49,7 @@ class TestStats:
 
 
 # ── Read ───────────────────────────────────────────────────────────────────
+
 
 class TestRead:
     def test_get_known_word(self, dm):
@@ -84,6 +88,7 @@ class TestRead:
 
 # ── Write ──────────────────────────────────────────────────────────────────
 
+
 class TestWrite:
     def test_add_new_word(self, dm):
         dm.add("শব্দ", ["প্রতিশব্দ১", "প্রতিশব্দ২"])
@@ -97,7 +102,7 @@ class TestWrite:
 
     def test_add_ignores_duplicates(self, dm):
         before = len(dm.get("সুন্দর"))
-        dm.add("সুন্দর", ["মনোরম"])   # already exists
+        dm.add("সুন্দর", ["মনোরম"])  # already exists
         assert len(dm.get("সুন্দর")) == before
 
     def test_add_ignores_self_synonym(self, dm):
@@ -121,12 +126,13 @@ class TestWrite:
 
     def test_add_save_false_does_not_crash(self, dm):
         dm.add("ক", ["খ", "গ"], save=False)
-        dm.add("ঘ", ["ঙ"],      save=False)
+        dm.add("ঘ", ["ঙ"], save=False)
         assert dm.has("ক")
         assert dm.has("ঘ")
 
 
 # ── Merge ──────────────────────────────────────────────────────────────────
+
 
 class TestMerge:
     def test_merge_adds_new_words(self, dm, extra_json):
@@ -154,6 +160,7 @@ class TestMerge:
 
 
 # ── Export ─────────────────────────────────────────────────────────────────
+
 
 class TestExport:
     def test_export_json(self, dm, tmp_path):

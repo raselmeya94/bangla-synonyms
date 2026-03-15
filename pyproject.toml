@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name            = "bangla-synonyms"
-version         = "1.0.0"
+version         = "1.0.1"
 description     = "Bangla synonym lookup — offline dataset + live Web Scraping"
 readme          = "README.md"
 license         = { text = "MIT" }

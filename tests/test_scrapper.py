@@ -8,10 +8,11 @@ Based on: scrapper_api_test_[offline].py
           scrapper_api_test_[online].py
 """
 import pytest
+
 from bangla_synonyms import Scrapper
 
-
 # ── Offline mode ───────────────────────────────────────────────────────────
+
 
 class TestScrapperOffline:
     """Scrapper(offline=True) — no network calls, local dataset only."""
@@ -93,6 +94,7 @@ class TestScrapperOffline:
 
 # ── Online mode — marked slow, skipped by default ─────────────────────────
 
+
 @pytest.mark.slow
 @pytest.mark.network
 class TestScrapperOnline:
@@ -128,8 +130,11 @@ class TestScrapperOnline:
 
     def test_full_custom(self):
         sc = Scrapper(
-            auto_save=True, delay=2, timeout=20,
-            sources=["wiktionary", "shabdkosh"], merge=True,
+            auto_save=True,
+            delay=2,
+            timeout=20,
+            sources=["wiktionary", "shabdkosh"],
+            merge=True,
         )
         result = sc.get("নদী")
         assert isinstance(result, list)
@@ -140,7 +145,12 @@ class TestScrapperOnline:
         assert isinstance(result, dict)
         assert result["word"] == "নদী"
         assert "sources_results" in result
-        assert result["quality"] in ("wikiconfirmed", "cross_source", "single_source", "empty")
+        assert result["quality"] in (
+            "wikiconfirmed",
+            "cross_source",
+            "single_source",
+            "empty",
+        )
 
     def test_raw_confirmed_flag(self):
         sc = Scrapper(sources=["wiktionary", "shabdkosh"])

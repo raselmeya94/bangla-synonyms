@@ -8,10 +8,11 @@ Based on: top_level_api_test_[offline].py
           top_level_api_test_[online].py
 """
 import pytest
+
 import bangla_synonyms as bs
 
-
 # ── Offline tests (local dataset only) ────────────────────────────────────
+
 
 class TestTopLevelOffline:
     """bs.get() and bs.get_many() served from local dataset."""
@@ -102,6 +103,7 @@ class TestTopLevelOffline:
 
 # ── Online tests (live scraping) — marked slow, skipped by default ────────
 
+
 @pytest.mark.slow
 @pytest.mark.network
 class TestTopLevelOnline:
@@ -126,7 +128,12 @@ class TestTopLevelOnline:
         result = bs.get("নদী", sources=["wiktionary", "shabdkosh"], raw=True)
         assert isinstance(result, dict)
         assert result["word"] == "নদী"
-        assert result["quality"] in ("wikiconfirmed", "cross_source", "single_source", "empty")
+        assert result["quality"] in (
+            "wikiconfirmed",
+            "cross_source",
+            "single_source",
+            "empty",
+        )
         assert "sources_results" in result
 
     def test_get_many_online(self):

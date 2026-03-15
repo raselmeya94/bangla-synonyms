@@ -38,7 +38,7 @@ from bs4 import BeautifulSoup
 
 # ── Constants ─────────────────────────────────────────────────
 
-_URL   = "https://www.shabdkosh.com/search-dictionary?lc=bn&sl=en&tl=bn&e={word}"
+_URL = "https://www.shabdkosh.com/search-dictionary?lc=bn&sl=en&tl=bn&e={word}"
 _BN_RE = re.compile(r"[\u0980-\u09FF]")
 
 log = logging.getLogger(__name__)
@@ -46,11 +46,13 @@ log = logging.getLogger(__name__)
 
 # ── Helpers ───────────────────────────────────────────────────
 
+
 def _is_bangla(text: str) -> bool:
     return bool(_BN_RE.search(text))
 
 
 # ── Public fetch function ─────────────────────────────────────
+
 
 def fetch_shabdkosh(word: str, session, timeout: int = 10) -> list | None:
     """
@@ -79,9 +81,9 @@ def fetch_shabdkosh(word: str, session, timeout: int = 10) -> list | None:
         log.warning("[shabdkosh] request failed for '%s': %s", word, e)
         return None
 
-    soup     = BeautifulSoup(resp.text, "lxml")
+    soup = BeautifulSoup(resp.text, "lxml")
     synonyms = []
-    seen     = set()
+    seen = set()
 
     for span in soup.find_all("span", class_="ensyn"):
         w = span.get_text().strip()
