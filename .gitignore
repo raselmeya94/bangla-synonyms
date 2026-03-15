@@ -1,13 +1,15 @@
 # Downloaded dataset — not tracked in git
 bangla_synonyms_data/
 
-# Python
-__pycache__/
-*.py[cod]
-*.egg-info/
+# Python build artifacts
 dist/
 build/
+*.egg-info/
 .eggs/
+
+# Python cache
+__pycache__/
+*.py[cod]
 
 # Virtual environments
 .venv/
@@ -17,11 +19,8 @@ env/
 # Exported files from demo/CLI
 synonyms_export.json
 synonyms_export.csv
-*.json
-*.csv
-!pyproject.toml
 
-# OS
+# OS files
 .DS_Store
 Thumbs.db
 
@@ -32,3 +31,6 @@ Thumbs.db
 # Test cache
 .pytest_cache/
 .coverage
+
+# Future features (local experiments)
+_embedding.py

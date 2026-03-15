@@ -1,8 +1,8 @@
 # bangla-synonyms
 
 <p align="center">
-  <b>Bangla synonym lookup for the NLP community</b><br>
-  Offline dataset · Live web scraping · Source metadata · CLI included
+  <strong>Bangla synonym lookup for the NLP community</strong><br>
+  Offline dataset &nbsp;·&nbsp; Live web scraping &nbsp;·&nbsp; Source metadata &nbsp;·&nbsp; CLI included
 </p>
 
 <p align="center">
@@ -19,19 +19,19 @@ pip install bangla-synonyms
 
 ---
 
-### Why?
+## Why
 
-Bengali is spoken by over 230 million people, yet it remains one of the most underserved languages in the NLP ecosystem. Finding synonyms programmatically — something trivially easy for English — has no good solution for Bangla.
+Bengali is spoken by over 230 million people, yet it remains one of the most underserved languages in the NLP ecosystem. Finding synonyms programmatically — something trivially easy for English — has no reliable solution for Bangla.
 
-`bangla-synonyms` fills that gap. It is useful for:
+`bangla-synonyms` fills that gap. Common use cases:
 
 - **Text augmentation** — expand training data for Bangla ML models
-- **Search & indexing** — build synonym-aware search in Bangla apps
+- **Search and indexing** — build synonym-aware search in Bangla applications
 - **Writing tools** — avoid word repetition in Bangla text editors
-- **Education** — vocabulary builders, language learning apps
-- **Linguistics research** — corpus building, lexical analysis
+- **Education** — vocabulary builders and language learning tools
+- **Linguistics research** — corpus building and lexical analysis
 
-Results are cached locally on first lookup, so the dataset grows automatically the more you use it. No API key, no internet required for cached words.
+Results are cached locally on first lookup, so the dataset grows automatically the more you use it. No API key required. No internet connection needed for cached words.
 
 ---
 
@@ -42,12 +42,11 @@ Results are cached locally on first lookup, so the dataset grows automatically t
 - [Quick Start](#quick-start)
 - [Scraping Sources](#scraping-sources)
 - [Top-level API](#top-level-api)
-  - [bs.download()](#bsdownload)
-  - [bs.get()](#bsget)
-  - [bs.get_many()](#bsget_many)
-  - [bs.stats()](#bsstats)
-- [Raw Mode — Source Metadata](#raw-mode--source-metadata)
-- [BanglaSynonyms](#banglasynonyms)
+  - [download()](#download)
+  - [get()](#get)
+  - [get_many()](#get_many)
+  - [stats()](#stats)
+- [Raw Mode](#raw-mode)
 - [Scrapper](#scrapper)
 - [Core API](#core-api)
   - [DatasetManager](#datasetmanager)
@@ -57,24 +56,26 @@ Results are cached locally on first lookup, so the dataset grows automatically t
 - [Dataset](#dataset)
 - [Architecture](#architecture)
 - [Adding a New Source](#adding-a-new-source)
+- [Contributing](#contributing)
 - [License](#license)
 
 ---
 
 ## Features
 
-|                          |                                                            |
-| ------------------------ | ---------------------------------------------------------- |
-| 📖 **Offline-first**     | Local dataset চেক করে, তারপর network call                  |
-| 🌐 **Live fallback**     | Wiktionary → Shabdkosh → English-Bangla cascade            |
-| 🏷️ **Source metadata**   | `raw=True` দিলে প্রতিটা synonym এর source জানা যায়        |
-| 🔧 **Source control**    | ঠিক কোন sources ব্যবহার করবে তা নিজে বেছে নাও              |
-| 🔀 **Merge / first-hit** | সব sources merge করো, বা প্রথম hit এ থামো                  |
-| 💾 **Opt-in saving**     | Scraped results disk এ লেখা হয় শুধু `auto_save=True` দিলে |
-| 🚀 **Batch scraping**    | হাজার শব্দ, progress tracking, resume support              |
-| 📦 **Dataset download**  | এক command এ ~10 000 শব্দের dataset                        |
-| 🖥️ **CLI**               | Script এবং one-off lookup এর জন্য                          |
-| 🐍 **Python 3.9+**       | Type-annotated, dependency-light                           |
+|                        |                                                                     |
+| ---------------------- | ------------------------------------------------------------------- |
+| **Offline-first**      | Checks local dataset before making any network call                 |
+| **Live fallback**      | Cascades through Wiktionary → Shabdkosh → English-Bangla            |
+| **Quality filtering**  | Cross-source validation removes noise and wrong-sense entries       |
+| **Source metadata**    | `raw=True` returns per-synonym source attribution and confidence    |
+| **Source control**     | Choose exactly which sources to query                               |
+| **Merge or first-hit** | Combine results from all sources, or stop at the first match        |
+| **Opt-in persistence** | Scraped results are saved to disk only when `auto_save=True`        |
+| **Batch scraping**     | Scrape thousands of words with progress tracking and resume support |
+| **Dataset download**   | One-command download of a pre-built ~10,000 word dataset            |
+| **CLI**                | Full command-line interface for scripting and one-off lookups       |
+| **Python 3.9+**        | Type-annotated, minimal dependencies                                |
 
 ---
 
@@ -84,8 +85,6 @@ Results are cached locally on first lookup, so the dataset grows automatically t
 pip install bangla-synonyms
 ```
 
-**Runtime dependencies:** `requests`, `beautifulsoup4`, `lxml`, `click`
-
 ---
 
 ## Quick Start
@@ -93,27 +92,26 @@ pip install bangla-synonyms
 ```python
 import bangla_synonyms as bs
 
-# Step 1 — dataset একবার download করো (like nltk.download)
+# Download the dataset once
 bs.download()
 
-# Step 2 — lookup
+# Look up a single word
 bs.get("চোখ")
-# → ['চক্ষু', 'নেত্র', 'লোচন', 'আঁখি', 'দৃষ্টি']
+# → ['চক্ষু', 'নেত্র', 'লোচন', 'আঁখি', 'অক্ষি']
 
+# Look up multiple words at once
 bs.get_many(["চোখ", "মা", "সুন্দর"])
 # → {
 #     'চোখ':    ['চক্ষু', 'নেত্র', 'লোচন', 'আঁখি'],
-#     'মা':     ['জননী', 'মাতা', 'আম্মা', 'গর্ভধারিণী'],
-#     'সুন্দর': ['মনোরম', 'চমৎকার', 'রূপবান', 'শোভন'],
+#     'মা':     ['জননী', 'আম্মা', 'জন্মদাত্রী', 'মাতা'],
+#     'সুন্দর': ['খুবসুরত', 'হাসিন', 'মনোরম', 'মনোহর'],
 #   }
 ```
 
-Dataset এ না থাকলে automatically Wiktionary থেকে scrape করে আনে:
+Words not found in the local dataset are scraped automatically:
 
 ```python
 bs.get("তটিনী")
-# [local] 'তটিনী' not found in local dataset.
-# [online] scraping...
 # → ['নদী', 'প্রবাহিনী', 'সরিৎ', 'স্রোতস্বিনী']
 ```
 
@@ -121,61 +119,70 @@ bs.get("তটিনী")
 
 ## Scraping Sources
 
-তিনটা source available। সবগুলো default এ চলে, order হলো সবচেয়ে reliable থেকে শুরু।
+Three sources are available. All three are used by default, tried in order from most to least reliable.
 
-| Key                | Site                                                 | ধরন                 | Notes                                       |
-| ------------------ | ---------------------------------------------------- | ------------------- | ------------------------------------------- |
-| `"wiktionary"`     | [bn.wiktionary.org](https://bn.wiktionary.org)       | Structured wikitext | সবচেয়ে reliable, প্রথমে try করে            |
-| `"shabdkosh"`      | [shabdkosh.com](https://www.shabdkosh.com)           | Dictionary          | ভালো coverage, clean output                 |
-| `"english_bangla"` | [english-bangla.com](https://www.english-bangla.com) | bn→bn dictionary    | Last resort — near-synonyms / related words |
+| Key                | Site                                                 | Type                | Notes                                        |
+| ------------------ | ---------------------------------------------------- | ------------------- | -------------------------------------------- |
+| `"wiktionary"`     | [bn.wiktionary.org](https://bn.wiktionary.org)       | Structured wikitext | Most reliable; queried first                 |
+| `"shabdkosh"`      | [shabdkosh.com](https://www.shabdkosh.com)           | Dictionary          | Good coverage; clean output                  |
+| `"english_bangla"` | [english-bangla.com](https://www.english-bangla.com) | bn→bn dictionary    | Last resort; near-synonyms and related words |
 
-**Default behaviour:** তিনটাই try হয়, results merge হয়ে আসে, duplicates বাদ যায়।
+By default all three sources are tried and their results are merged and deduplicated.
+
+### Quality filtering
+
+Raw scraper output is passed through a multi-stage quality pipeline before being returned:
+
+1. **Noise removal** — drops phrases, hyphenated entries, numbered items, entries containing digits or Latin characters, and zero-width characters.
+2. **Cross-source validation** — when Wiktionary is present, its entries are kept in full (authoritative). Entries from other sources are filtered by source tier:
+   - Shabdkosh entries are included only when Wiktionary independently confirms them.
+   - English-Bangla entries are included only when confirmed by at least one other source.
+3. **Deduplication** — duplicate synonyms across sources are removed, keeping the first-seen source attribution.
+
+The `quality` field in raw mode output describes which strategy was applied.
 
 ---
 
 ## Top-level API
 
-`nltk` এর মতো — কোনো class বা instance লাগে না।
+The most common operations are available directly on the package — no class or instance needed.
 
 ```python
 import bangla_synonyms as bs
 ```
 
-### `bs.download()`
+### `download()`
 
 ```python
-bs.download()                      # full dataset (~10 000 words), default
-bs.download("mini")                # small starter set (~500 words)
-bs.download(force=True)            # আগে থাকলেও নতুন করে download করো
+bs.download()                       # full dataset (~10,000 words)
+bs.download("mini")                 # small starter set (~500 words)
+bs.download(force=True)             # re-download even if the file already exists
 bs.download("latest", force=True)
 ```
 
-Dataset save হয়: `./bangla_synonyms_data/dataset.json`
+The dataset is saved to `./bangla_synonyms_data/dataset.json`.
 
 ---
 
-### `bs.get()`
+### `get()`
 
 ```python
 bs.get(word, sources=None, raw=False)
 ```
 
-| Parameter | Type         | Default | Description                                   |
-| --------- | ------------ | ------- | --------------------------------------------- |
-| `word`    | `str`        | —       | Lookup করার Bangla শব্দ                       |
-| `sources` | `list\|None` | `None`  | কোন sources ব্যবহার করবে (None = সব তিনটা)    |
-| `raw`     | `bool`       | `False` | `True` হলে source metadata সহ dict return করে |
+| Parameter | Type           | Default | Description                                    |
+| --------- | -------------- | ------- | ---------------------------------------------- |
+| `word`    | `str`          | —       | The Bangla word to look up                     |
+| `sources` | `list \| None` | `None`  | Sources to query (`None` uses all three)       |
+| `raw`     | `bool`         | `False` | Return a metadata dict instead of a plain list |
 
 ```python
-# Simple lookup
 bs.get("চোখ")
 # → ['চক্ষু', 'নেত্র', 'লোচন', 'আঁখি']
 
-# নির্দিষ্ট source
 bs.get("চোখ", sources=["wiktionary"])
 bs.get("চোখ", sources=["wiktionary", "shabdkosh"])
 
-# Source metadata সহ
 bs.get("চোখ", raw=True)
 # → {
 #     "word":          "চোখ",
@@ -183,57 +190,45 @@ bs.get("চোখ", raw=True)
 #     "results": [
 #         {"synonym": "চক্ষু", "source": "wiktionary"},
 #         {"synonym": "নেত্র", "source": "wiktionary"},
-#         {"synonym": "আঁখি", "source": "shabdkosh"},
+#         {"synonym": "অক্ষি", "source": "shabdkosh", "confirmed": True},
 #     ],
-#     "words":         ["চক্ষু", "নেত্র", "আঁখি"],
+#     "words":         ["চক্ষু", "নেত্র", "অক্ষি"],
 #     "sources_hit":   ["wiktionary", "shabdkosh"],
 #     "sources_tried": ["wiktionary", "shabdkosh", "english_bangla"],
+#     "quality":       "wikiconfirmed",
 # }
 
-# কিছু না পেলে
 bs.get("xyz")
 # → []
 ```
 
 ---
 
-### `bs.get_many()`
+### `get_many()`
 
 ```python
 bs.get_many(words, sources=None, raw=False)
 ```
 
-| Parameter | Type         | Default | Description                             |
-| --------- | ------------ | ------- | --------------------------------------- |
-| `words`   | `list[str]`  | —       | Bangla শব্দের list                      |
-| `sources` | `list\|None` | `None`  | কোন sources ব্যবহার করবে                |
-| `raw`     | `bool`       | `False` | `True` হলে প্রতিটা word এ metadata dict |
+| Parameter | Type           | Default | Description                                  |
+| --------- | -------------- | ------- | -------------------------------------------- |
+| `words`   | `list[str]`    | —       | List of Bangla words to look up              |
+| `sources` | `list \| None` | `None`  | Sources to query                             |
+| `raw`     | `bool`         | `False` | Return metadata dicts instead of plain lists |
 
 ```python
-# Simple
-bs.get_many(["চোখ", "মা", "দুঃখ"])
-# → {'চোখ': [...], 'মা': [...], 'দুঃখ': [...]}
+bs.get_many(["চোখ", "মা", "নদী"])
+# → {'চোখ': [...], 'মা': [...], 'নদী': [...]}
 
-# Source selection
 bs.get_many(["চোখ", "মা"], sources=["wiktionary"])
 
-# Raw mode
 bs.get_many(["চোখ", "মা"], raw=True)
-# → {
-#     'চোখ': {
-#         "word": "চোখ", "source": "wiktionary",
-#         "results": [{"synonym": "চক্ষু", "source": "wiktionary"}, ...],
-#         "words": ["চক্ষু", "নেত্র", ...],
-#         "sources_hit":   ["wiktionary"],
-#         "sources_tried": ["wiktionary", "shabdkosh", "english_bangla"],
-#     },
-#     'মা': { ... },
-# }
+# → {'চোখ': {raw dict}, 'মা': {raw dict}}
 ```
 
 ---
 
-### `bs.stats()`
+### `stats()`
 
 ```python
 bs.stats()
@@ -243,177 +238,74 @@ bs.stats()
 # Source        : /home/user/bangla_synonyms_data/dataset.json
 # Top 5 words   :
 #   চোখ: চক্ষু, নেত্র, লোচন, আঁখি ...
-#   মা: জননী, মাতা, আম্মা, গর্ভধারিণী ...
+#   মা: জননী, আম্মা, জন্মদাত্রী ...
 ```
 
-`dict` হিসেবে return করে: `total_words`, `total_synonyms`, `avg_per_word`, `source`.
+Returns a `dict` with keys: `total_words`, `total_synonyms`, `avg_per_word`, `source`.
 
 ---
 
-## Raw Mode — Source Metadata
+## Raw Mode
 
-`raw=True` flag সব level এ কাজ করে — `bs.get()`, `bs.get_many()`, `BanglaSynonyms`, এবং `Scrapper`।
+Pass `raw=True` to any lookup function to receive full source metadata alongside results. This is supported at every level: `get()`, `get_many()`, and `Scrapper`.
 
-### Return structure
+### Response structure
 
 ```python
 {
-    "word":          str,          # lookup করা শব্দ
-    "source":        str | None,   # primary source ("wiktionary" / "local" / None)
-    "results": [                   # প্রতিটা synonym এর আলাদা entry
+    "word":          str,           # the word that was looked up
+    "source":        str | None,    # primary source, or "local" for cached results
+    "results": [
         {
-            "synonym": str,        # synonym শব্দ
-            "source":  str,        # কোন source থেকে এসেছে
+            "synonym":   str,       # the synonym
+            "source":    str,       # which source provided it
+            "confirmed": bool,      # True when cross-validated (optional key)
         },
         ...
     ],
-    "words":         list[str],    # flat synonym list (backward-compatible)
-    "sources_hit":   list[str],    # কোন sources data দিয়েছে
-    "sources_tried": list[str],    # কোন sources try করা হয়েছে
+    "words":         list[str],     # flat synonym list (backward-compatible)
+    "sources_hit":   list[str],     # sources that returned data
+    "sources_tried": list[str],     # sources that were queried
+    "quality":       str,           # filtering strategy applied
 }
 ```
 
-### `source` field values
+### `quality` values
 
-| Value              | মানে                                               |
-| ------------------ | -------------------------------------------------- |
-| `"local"`          | Local dataset থেকে পেয়েছে — no network call হয়নি |
-| `"wiktionary"`     | bn.wiktionary.org থেকে primary data এসেছে          |
-| `"shabdkosh"`      | shabdkosh.com থেকে primary data এসেছে              |
-| `"english_bangla"` | english-bangla.com থেকে primary data এসেছে         |
-| `None`             | কিছু পাওয়া যায়নি বা network error হয়েছে         |
+| Value             | Meaning                                                             |
+| ----------------- | ------------------------------------------------------------------- |
+| `"wikiconfirmed"` | Wiktionary was present; other sources filtered by cross-validation  |
+| `"cross_source"`  | No Wiktionary; synonyms confirmed by two or more sources            |
+| `"single_source"` | Only one source was available; noise-cleaned results returned as-is |
+| `"local"`         | Returned from local dataset cache; no scraping was performed        |
+| `"empty"`         | No results survived filtering, or all sources returned errors       |
 
-### Use cases
+### `confirmed` flag
+
+The `confirmed: True` flag is set on entries from secondary sources that passed cross-validation. Wiktionary entries are always authoritative and do not carry this flag.
 
 ```python
-import bangla_synonyms as bs
-
-# Website এ source badge দেখানো
 result = bs.get("চোখ", raw=True)
-for entry in result["results"]:
-    print(f"{entry['synonym']}  [{entry['source']}]")
-# চক্ষু  [wiktionary]
-# নেত্র  [wiktionary]
-# আঁখি  [shabdkosh]
-# লোচন  [shabdkosh]
 
-# কোন source কতটা দিয়েছে জানা
-print(result["sources_hit"])          # ['wiktionary', 'shabdkosh']
+# Filter to Wiktionary entries only
+wiki = [r["synonym"] for r in result["results"] if r["source"] == "wiktionary"]
 
-# শুধু wiktionary র synonyms filter করা
-wiki_syns = [
+# Filter to cross-validated entries (Wiktionary + confirmed secondaries)
+high_confidence = [
     r["synonym"] for r in result["results"]
-    if r["source"] == "wiktionary"
+    if r["source"] == "wiktionary" or r.get("confirmed")
 ]
 
-# Flat list (raw=False এর মতো)
-print(result["words"])                # ['চক্ষু', 'নেত্র', 'আঁখি', ...]
-
-# Local cache hit — source = "local"
-result = bs.get("মা", raw=True)
-print(result["source"])               # "local"
-print(result["sources_tried"])        # ["local"]
-
-# Network error হলে
-result = bs.get("xyz", raw=True)
-print(result["source"])               # None
-print(result["words"])                # []
-```
-
----
-
-## BanglaSynonyms
-
-Class-based interface — dataset management built in।
-
-```python
-from bangla_synonyms import BanglaSynonyms
-```
-
-### Constructor
-
-```python
-BanglaSynonyms(
-    sources=None,     # কোন sources ব্যবহার করবে (None = সব তিনটা)
-    merge=True,       # সব sources merge করবে কিনা
-    auto_save=False,  # scraped results disk এ save করবে কিনা — opt-in
-    delay=1.0,        # request এর মাঝে delay (seconds)
-    timeout=10,       # HTTP timeout (seconds)
-)
-```
-
-```python
-bn = BanglaSynonyms()                              # সব defaults, no auto-save
-bn = BanglaSynonyms(auto_save=True)               # scraping results persist করবে
-bn = BanglaSynonyms(sources=["wiktionary"])        # Wiktionary only
-bn = BanglaSynonyms(sources=["wiktionary", "shabdkosh"])
-bn = BanglaSynonyms(merge=False)                   # first-match mode
-bn = BanglaSynonyms(delay=2.0, timeout=20)         # slow/polite connection
-```
-
-### Methods
-
-#### `.get(word, raw=False)`
-
-```python
-bn.get("চোখ")
-# → ['চক্ষু', 'নেত্র', 'লোচন', ...]
-
-bn.get("চোখ", raw=True)
-# → {"word": "চোখ", "source": "wiktionary", "results": [...], "words": [...], ...}
-
-bn.get("xyz")
-# → []
-```
-
-#### `.get_many(words, raw=False)`
-
-```python
-bn.get_many(["চোখ", "মা", "নদী"])
-# → {'চোখ': [...], 'মা': [...], 'নদী': [...]}
-
-bn.get_many(["চোখ", "মা"], raw=True)
-# → {'চোখ': {raw dict}, 'মা': {raw dict}}
-```
-
-#### `.add(word, synonyms)`
-
-Local dataset এ manually synonym যোগ করো।
-
-```python
-bn.add("পরিবেশ", ["প্রকৃতি", "জগত", "বিশ্ব"])
-```
-
-#### `.stats()`
-
-```python
-info = bn.stats()
-info["total_words"]    # 9842
-info["avg_per_word"]   # 4.82
-```
-
-#### `.export(path, fmt="json")`
-
-```python
-bn.export("synonyms.json")
-bn.export("synonyms.csv", fmt="csv")
-```
-
-#### `BanglaSynonyms.download()` (class method)
-
-```python
-# Top-level bs.download() prefer করো।
-# Class method backward-compatibility এর জন্য available।
-BanglaSynonyms.download()
-BanglaSynonyms.download("mini")
-BanglaSynonyms.download(force=True)
+# Check which filtering strategy was applied
+print(result["quality"])         # "wikiconfirmed"
+print(result["sources_hit"])     # ["wiktionary", "shabdkosh"]
 ```
 
 ---
 
 ## Scrapper
 
-Researcher এবং power user দের জন্য — সব parameter নিজের হাতে control করো।
+Fine-grained control over every aspect of the scraping process. Intended for researchers and power users.
 
 ```python
 from bangla_synonyms import Scrapper
@@ -421,52 +313,47 @@ from bangla_synonyms import Scrapper
 
 ### Constructor
 
-| Parameter   | Type         | Default | Description                                             |
-| ----------- | ------------ | ------- | ------------------------------------------------------- |
-| `offline`   | `bool`       | `False` | `True` হলে শুধু local dataset, কোনো network call নেই    |
-| `auto_save` | `bool`       | `False` | `True` হলে scraped results disk এ persist হবে — opt-in  |
-| `delay`     | `float`      | `1.0`   | Request এর মাঝে wait (seconds)                          |
-| `timeout`   | `int`        | `10`    | HTTP timeout (seconds)                                  |
-| `sources`   | `list\|None` | `None`  | কোন sources ব্যবহার করবে (None = সব তিনটা)              |
-| `merge`     | `bool`       | `True`  | সব sources merge (`True`) বা first-hit এ থামো (`False`) |
+| Parameter   | Type           | Default | Description                                                  |
+| ----------- | -------------- | ------- | ------------------------------------------------------------ |
+| `offline`   | `bool`         | `False` | Use local dataset only; make no network calls                |
+| `auto_save` | `bool`         | `False` | Persist scraped results to disk                              |
+| `delay`     | `float`        | `1.0`   | Seconds between HTTP requests                                |
+| `timeout`   | `int`          | `10`    | HTTP request timeout in seconds                              |
+| `sources`   | `list \| None` | `None`  | Sources to query (`None` = all three)                        |
+| `merge`     | `bool`         | `True`  | Merge all sources (`True`) or stop at first result (`False`) |
 
 ```python
-sc = Scrapper()                                       # online, no auto-save
-sc = Scrapper(offline=True)                           # local only
-sc = Scrapper(auto_save=True)                         # save scraped results
-sc = Scrapper(sources=["wiktionary"])                 # one source
+sc = Scrapper()                                       # online, no persistence
+sc = Scrapper(offline=True)                           # local dataset only
+sc = Scrapper(auto_save=True)                         # persist results
+sc = Scrapper(sources=["wiktionary"])                 # single source
 sc = Scrapper(sources=["wiktionary", "shabdkosh"])    # two sources
-sc = Scrapper(merge=False)                            # first-hit mode (faster)
+sc = Scrapper(merge=False)                            # stop at first hit
 sc = Scrapper(delay=2.0, timeout=20)                  # slow connection
-sc = Scrapper(auto_save=True, delay=2.0)              # batch / polite
 ```
 
 ### `.get(word, raw=False)`
 
-```python
-sc = Scrapper()
+Checks the local dataset first. Falls back to live scraping if the word is not found.
 
-# Local first, তারপর online
+```python
 sc.get("চোখ")
 # → ['চক্ষু', 'নেত্র', 'লোচন', ...]
 
-# Source metadata সহ
 sc.get("চোখ", raw=True)
-# → {"word": "চোখ", "source": "wiktionary", "results": [...], "words": [...], ...}
+# → {"word": "চোখ", "source": "wiktionary", "quality": "wikiconfirmed", ...}
 
-# Local cache hit
+# Local cache hit — no network call is made
 sc.get("মা", raw=True)
-# → {"word": "মা", "source": "local", "results": [...], ...}
+# → {"word": "মা", "source": "local", "quality": "local", ...}
 
-# Offline mode
-Scrapper(offline=True).get("নদী")   # local only
+Scrapper(offline=True).get("নদী")
+# → local dataset lookup only
 ```
 
 ### `.get_many(words, raw=False)`
 
 ```python
-sc = Scrapper(delay=1.5)
-
 sc.get_many(["চোখ", "মা", "নদী"])
 # → {'চোখ': [...], 'মা': [...], 'নদী': [...]}
 
@@ -474,7 +361,7 @@ sc.get_many(["চোখ", "মা"], raw=True)
 # → {'চোখ': {raw dict}, 'মা': {raw dict}}
 ```
 
-Delay শুধু online request এর আগে হয় — local cache hit এ কোনো delay নেই।
+The request delay applies only to live HTTP calls. Local cache hits incur no delay.
 
 ### `.active_sources`
 
@@ -486,34 +373,51 @@ Scrapper(sources=["wiktionary"]).active_sources
 # → ["wiktionary"]
 ```
 
+### `.download()` — class method
+
+```python
+Scrapper.download()
+Scrapper.download("mini")
+Scrapper.download(force=True)
+```
+
 ### Source selection patterns
 
 ```python
-# NLP research — structured, clean data only
+# Structured data only — best for NLP pipelines
 sc = Scrapper(sources=["wiktionary"])
 
-# Maximum coverage
-sc = Scrapper()   # all three, merged
+# Maximum coverage — all sources merged
+sc = Scrapper()
 
-# Speed-first — first source that returns anything জেতে
+# Speed-first — stop at the first source that returns results
 sc = Scrapper(merge=False)
 
-# Low-quality source avoid করো
+# Exclude the lowest-reliability source
 sc = Scrapper(sources=["wiktionary", "shabdkosh"])
 
-# Long-running batch — save করো, polite rate
+# Long-running batch — persist results, polite rate limit
 sc = Scrapper(auto_save=True, delay=2.0)
+```
+
+### Dataset helpers
+
+```python
+sc.add("পরিবেশ", ["প্রকৃতি", "জগত", "বিশ্ব"])  # add to local dataset
+sc.stats()                                        # dataset statistics
+sc.export("synonyms.json")                        # export as JSON
+sc.export("synonyms.csv", fmt="csv")              # export as CSV
 ```
 
 ---
 
 ## Core API
 
-Advanced users এবং researchers এর জন্য।
+Lower-level building blocks for advanced users.
 
 ### DatasetManager
 
-Local dataset সরাসরি পড়া, লেখা, merge করার class।
+Direct read/write access to the local synonym dataset.
 
 ```python
 from bangla_synonyms.core import DatasetManager
@@ -521,51 +425,50 @@ from bangla_synonyms.core import DatasetManager
 dm = DatasetManager()
 ```
 
-সব instances একই in-memory data share করে — একটায় change সবখানে reflect হয়।
+All instances share the same in-memory store. A change made through one instance is immediately visible through any other.
 
 Dataset location: `./bangla_synonyms_data/dataset.json`
 
-#### Read
+#### Reading data
 
 ```python
-dm.get("চোখ")          # → ['চক্ষু', 'নেত্র', ...]  ([] if not found)
+dm.get("চোখ")          # → ['চক্ষু', 'নেত্র', ...]   empty list if not found
 dm.has("চোখ")          # → True / False
-dm.all_words()         # → sorted list of all words in dataset
-"চোখ" in dm           # → True  (supports `in` operator)
-len(dm)               # → 9842  (total word count)
+dm.all_words()         # → sorted list of all words in the dataset
+"চোখ" in dm           # → True
+len(dm)               # → 9842
 ```
 
-#### Write
+#### Writing data
 
 ```python
-# Merge with existing synonyms
+# Merge new synonyms with any that already exist
 dm.add("শব্দ", ["প্রতিশব্দ১", "প্রতিশব্দ২"])
 
-# Replace synonym list entirely
+# Replace the synonym list entirely
 dm.update("শব্দ", ["নতুন১", "নতুন২"])
 
-# Delete
-dm.remove("শব্দ")   # → True if existed, False otherwise
+# Remove a word
+dm.remove("শব্দ")   # returns True if the word existed, False otherwise
 ```
 
-প্রতিটা write automatically disk এ save করে। Batch এ কাজ করলে:
+Each write automatically flushes to disk. To batch multiple writes into a single flush, pass `save=False` and export manually:
 
 ```python
-# save=False দিলে disk write হবে না
 dm.add("ক", ["খ", "গ"],  save=False)
 dm.add("ঘ", ["ঙ"],       save=False)
 dm.add("চ", ["ছ", "জ"],  save=False)
-dm.export("synonyms.json")   # একবারেই save
+dm.export("synonyms.json")
 ```
 
-#### Merge from file
+#### Merging from a file
 
 ```python
 added = dm.merge("extra_synonyms.json")
 print(f"{added} new words added")
 ```
 
-JSON format:
+The JSON file should have the same format as the main dataset:
 
 ```json
 {
@@ -574,13 +477,13 @@ JSON format:
 }
 ```
 
-#### Export
+#### Exporting
 
 ```python
-dm.export("synonyms.json")            # JSON (default)
-dm.export("synonyms.csv", fmt="csv")  # CSV
+dm.export("synonyms.json")             # JSON (default)
+dm.export("synonyms.csv", fmt="csv")   # CSV
 
-dm.reload()   # disk থেকে আবার load করো (external change হলে)
+dm.reload()   # reload from disk after an external change
 ```
 
 CSV format:
@@ -588,7 +491,7 @@ CSV format:
 ```
 word,synonyms,count
 চোখ,চক্ষু | নেত্র | লোচন | আঁখি,4
-মা,জননী | মাতা | আম্মা,3
+মা,জননী | আম্মা | জন্মদাত্রী,3
 ```
 
 #### Stats
@@ -611,7 +514,7 @@ info["avg_per_word"]    # 4.82
 
 ### WordlistFetcher
 
-Wiktionary থেকে Bangla শব্দের list fetch করার class।
+Fetches Bangla word lists from Wiktionary for use with `BatchScraper`.
 
 ```python
 from bangla_synonyms.core import WordlistFetcher, DatasetManager
@@ -620,18 +523,15 @@ wf = WordlistFetcher()
 dm = DatasetManager()
 ```
 
-#### Methods
-
 ```python
-# Wiktionary allpages API থেকে শব্দ fetch করো
+# Fetch up to 500 words from Wiktionary
 words = wf.fetch(limit=500)
-# → ['অকারণ', 'অক্লান্ত', 'আকাশ', ...]
 
-# Dataset এ নেই এমন শব্দ filter করো (resume support)
+# Filter to words not yet in the local dataset (enables safe resume)
 new_words = wf.filter_new(words, dm)
 print(f"{len(new_words)} words not yet scraped")
 
-# File এ save / load
+# Persist and reload word lists
 wf.save(words, "wordlist.txt")
 words = wf.load("wordlist.txt")
 ```
@@ -640,7 +540,7 @@ words = wf.load("wordlist.txt")
 
 ### BatchScraper
 
-অনেক শব্দ একসাথে scrape করার class — progress bar, checkpoint, resume।
+Scrapes synonyms for large word lists with progress tracking, checkpointing, and resume support.
 
 ```python
 from bangla_synonyms.core import BatchScraper
@@ -648,50 +548,47 @@ from bangla_synonyms.core import BatchScraper
 
 #### Constructor
 
-| Parameter    | Default | Description                    |
-| ------------ | ------- | ------------------------------ |
-| `dataset`    | shared  | DatasetManager instance        |
-| `delay`      | `1.0`   | Request এর মাঝে wait (seconds) |
-| `timeout`    | `10`    | HTTP timeout (seconds)         |
-| `save_every` | `50`    | প্রতি N শব্দ পরে disk flush    |
-| `sources`    | `None`  | কোন sources ব্যবহার করবে       |
-| `merge`      | `True`  | Merge all sources বা first-hit |
+| Parameter    | Default | Description                                     |
+| ------------ | ------- | ----------------------------------------------- |
+| `dataset`    | shared  | `DatasetManager` instance to write results into |
+| `delay`      | `1.0`   | Seconds between HTTP requests                   |
+| `timeout`    | `10`    | HTTP request timeout in seconds                 |
+| `save_every` | `50`    | Flush results to disk every N words             |
+| `sources`    | `None`  | Sources to query (`None` = all three)           |
+| `merge`      | `True`  | Merge all sources or stop at first hit          |
 
 #### `.run(words, skip_existing=True, show_progress=True, sources=None)`
 
 ```python
-from bangla_synonyms.core import BatchScraper
+scraper = BatchScraper(delay=1.0)
 
-bs = BatchScraper(delay=1.0)
-
-# Basic run
-result = bs.run(["চোখ", "মা", "নদী", "আকাশ"])
+result = scraper.run(["চোখ", "মা", "নদী", "আকাশ"])
 #   [ 1/4] চোখ: ✓ চক্ষু, নেত্র, লোচন ...
-#   [ 2/4] মা: ✓ জননী, মাতা, আম্মা
+#   [ 2/4] মা:  ✓ জননী, আম্মা, জন্মদাত্রী
 #   [ 3/4] নদী: ✓ তটিনী, প্রবাহিনী
 #   [ 4/4] আকাশ: — not found
 #
 #   [bangla-synonyms] done: 3 found, 1 not found, 0 errors
 
-# Interrupted run restart করলেও skip_existing=True দিলে safe
-result = bs.run(words, skip_existing=True)
+# Safe to re-run; already-scraped words are skipped
+result = scraper.run(words, skip_existing=True)
 
-# এই specific run এ source override
-result = bs.run(words, sources=["wiktionary"])
+# Override sources for this run only
+result = scraper.run(words, sources=["wiktionary"])
 
-# Silent
-result = bs.run(words, show_progress=False)
+# Suppress progress output
+result = scraper.run(words, show_progress=False)
 
-# return → {'চোখ': ['চক্ষু', ...], 'মা': ['জননী', ...], ...}
+# Return value: {word: [synonyms], ...} for newly scraped words
 ```
 
 #### `.run_from_wiktionary(limit=200)`
 
-Wiktionary থেকে word list fetch করে সরাসরি scrape শুরু করে।
+Fetches a word list from Wiktionary and scrapes all of them in one step.
 
 ```python
-bs = BatchScraper(delay=1.5, sources=["wiktionary", "shabdkosh"])
-bs.run_from_wiktionary(limit=1000)
+scraper = BatchScraper(delay=1.5, sources=["wiktionary", "shabdkosh"])
+scraper.run_from_wiktionary(limit=1000)
 ```
 
 #### Full batch workflow
@@ -702,23 +599,23 @@ from bangla_synonyms.core import DatasetManager, WordlistFetcher, BatchScraper
 dm = DatasetManager()
 wf = WordlistFetcher()
 
-# 1. Word list fetch করো
+# Fetch word list
 words = wf.fetch(limit=5000)
-wf.save(words, "wordlist.txt")         # backup রাখো
+wf.save(words, "wordlist.txt")
 
-# 2. Already scraped গুলো skip করো
+# Skip words already in the dataset
 new_words = wf.filter_new(words, dm)
-print(f"{len(new_words)} new words to scrape")
+print(f"{len(new_words)} words to scrape")
 
-# 3. Scrape
-bs = BatchScraper(
+# Scrape
+scraper = BatchScraper(
     delay=1.0,
     save_every=100,
     sources=["wiktionary", "shabdkosh"],
 )
-bs.run(new_words, skip_existing=True)
+scraper.run(new_words, skip_existing=True)
 
-# 4. Export
+# Export
 dm.stats()
 dm.export("bangla_synonyms_full.json")
 dm.export("bangla_synonyms_full.csv", fmt="csv")
@@ -729,41 +626,39 @@ dm.export("bangla_synonyms_full.csv", fmt="csv")
 ## CLI Reference
 
 ```bash
-# ── Dataset ──────────────────────────────────────────────────────
+# Dataset management
 bangla-synonyms download
 bangla-synonyms download --version mini
 bangla-synonyms download --force
 
-# ── Lookup ───────────────────────────────────────────────────────
+# Synonym lookup
 bangla-synonyms get চোখ
-bangla-synonyms get চোখ মা সুন্দর                  # একসাথে অনেক শব্দ
-bangla-synonyms get চোখ --offline                  # local dataset only
+bangla-synonyms get চোখ মা সুন্দর
+bangla-synonyms get চোখ --offline
 bangla-synonyms get চোখ --sources wiktionary
-bangla-synonyms get চোখ --sources wiktionary \
-                        --sources shabdkosh
-bangla-synonyms get চোখ --no-merge                 # first-hit mode
+bangla-synonyms get চোখ --sources wiktionary --sources shabdkosh
+bangla-synonyms get চোখ --no-merge
 
-# ── Build dataset ─────────────────────────────────────────────────
+# Build / expand the local dataset
 bangla-synonyms build
 bangla-synonyms build --limit 1000
 bangla-synonyms build --delay 2.0
 bangla-synonyms build --sources wiktionary
-bangla-synonyms build --sources wiktionary \
-                      --sources shabdkosh
+bangla-synonyms build --sources wiktionary --sources shabdkosh
 bangla-synonyms build --no-merge
 
-# ── Info & export ─────────────────────────────────────────────────
+# Information and export
 bangla-synonyms stats
 bangla-synonyms export synonyms.json
 bangla-synonyms export synonyms.csv --format csv
 
-# ── Help ──────────────────────────────────────────────────────────
+# Help
 bangla-synonyms --help
 bangla-synonyms get --help
 bangla-synonyms build --help
 ```
 
-### CLI as Python module
+The CLI functions are also importable for use in scripts:
 
 ```python
 from bangla_synonyms.cli import get, build, stats
@@ -773,8 +668,6 @@ result = get(["চোখ"], offline=True)
 result = get(["চোখ"], sources=["wiktionary"], merge=False)
 
 added  = build(limit=500, delay=1.5)
-added  = build(sources=["wiktionary"])
-
 info   = stats()
 ```
 
@@ -782,18 +675,16 @@ info   = stats()
 
 ## Dataset
 
-Pre-built dataset GitHub Releases থেকে download করা যায়।
+A pre-built dataset is available for download via GitHub Releases.
 
-| Version  | Words   | Approx. size | Command               |
-| -------- | ------- | ------------ | --------------------- |
-| `latest` | ~10 000 | ~3 MB        | `bs.download()`       |
-| `mini`   | ~500    | ~150 KB      | `bs.download("mini")` |
+| Version  | Words   | Approximate size | Command               |
+| -------- | ------- | ---------------- | --------------------- |
+| `latest` | ~10,000 | ~3 MB            | `bs.download()`       |
+| `mini`   | ~500    | ~150 KB          | `bs.download("mini")` |
 
-Save path: `./bangla_synonyms_data/dataset.json`
+The dataset is saved to `./bangla_synonyms_data/dataset.json`. All running instances pick up the new data immediately after a download — no restart required.
 
-Download করার পর সব existing instances automatically নতুন data দেখতে পাবে — restart লাগবে না।
-
-### নিজে বড় dataset তৈরি করতে
+### Building a larger dataset
 
 ```bash
 bangla-synonyms build --limit 5000 \
@@ -804,180 +695,42 @@ bangla-synonyms stats
 bangla-synonyms export my_dataset.json
 ```
 
-### Dataset JSON format
+### Dataset format
 
 ```json
 {
-  "চোখ": ["চক্ষু", "নেত্র", "লোচন", "আঁখি", "দৃষ্টি"],
-  "মা": ["জননী", "মাতা", "আম্মা", "গর্ভধারিণী"],
+  "চোখ": ["চক্ষু", "নেত্র", "লোচন", "আঁখি", "অক্ষি"],
+  "মা": ["জননী", "আম্মা", "জন্মদাত্রী", "মাতা"],
   "নদী": ["তটিনী", "প্রবাহিনী", "সরিৎ", "স্রোতস্বিনী"]
 }
 ```
 
 ---
 
-## Architecture
+## Contributing
 
-```
-bangla_synonyms/
-│
-├── __init__.py             ← top-level API: download(), get(), get_many(), stats()
-│                             public exports: BanglaSynonyms, Scrapper
-│
-├── synonyms.py             ← BanglaSynonyms class
-├── _scrapper.py            ← Scrapper class (source selection, fallback, raw mode)
-├── cli.py                  ← Click CLI + importable helpers
-│
-└── core/
-    ├── __init__.py         ← DatasetManager, BatchScraper, WordlistFetcher
-    │                         fetch_with_sources(), fetch_with_sources_raw()
-    │                         SOURCES registry, DEFAULT_SOURCES
-    │
-    ├── _wikitext.py        ← bn.wiktionary.org (wikitext API + HTML fallback)
-    ├── _shabdkosh.py       ← shabdkosh.com scraper
-    └── _english_bangla.py  ← english-bangla.com scraper
-```
+Bengali is spoken by 230 million people but remains one of the most underserved
+languages in NLP. `bangla-synonyms` is one of the few programmatic tools for
+Bangla lexical resources — your contribution directly improves what the entire
+community can build.
 
-### Lookup flow
+Bug reports, new sources, quality improvements, and dataset contributions are
+all welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for the full workflow —
+how to open issues, create branches, and submit PRs.
 
-```
-bs.get("চোখ")
-    │
-    ▼
-Local dataset চেক (no network)
-    │
-    ├── Hit ────────────────────────────► return list  /  raw dict (source="local")
-    │
-    └── Miss
-            │
-            ▼
-        offline=True? ──► return []
-            │
-            ▼
-        Source cascade
-            │
-            ├── wiktionary     → fetch → results collected
-            ├── shabdkosh      → fetch → results merged       (merge=True)
-            └── english_bangla → fetch → results merged       (merge=True)
-            │
-            │   merge=False: first source with results জিতে যায়
-            │
-            ▼
-        auto_save=True? → dm.add(word, synonyms)
-            │
-            ▼
-        return list  /  raw dict (source = first contributing source)
-```
-
-### `raw=True` metadata flow
-
-```
-fetch_with_sources_raw("চোখ", session)
-    │
-    ├── wiktionary  → ["চক্ষু", "নেত্র"]
-    │                  tagged → [{"synonym": "চক্ষু", "source": "wiktionary"}, ...]
-    │
-    ├── shabdkosh   → ["আঁখি"]
-    │                  tagged → [{"synonym": "আঁখি", "source": "shabdkosh"}]
-    │
-    └── return {
-          "word":          "চোখ",
-          "results":       [all tagged, deduplicated],
-          "words":         ["চক্ষু", "নেত্র", "আঁখি"],
-          "sources_hit":   ["wiktionary", "shabdkosh"],
-          "sources_tried": ["wiktionary", "shabdkosh", "english_bangla"],
-        }
-```
+> **BNLP users** — if you use [BNLP](https://github.com/sagorbrur/bnlp) for
+> tokenization, embeddings, or NER, `bangla-synonyms` pairs naturally with it.
+> Use this library to expand your training vocabulary, augment datasets, or
+> build synonym-aware preprocessing pipelines on top of BNLP models.
 
 ---
-
-## Adding a New Source
-
-নতুন scraping source যোগ করা plug-in style — দুটো step এ।
-
-### Step 1 — scraper function লেখো
-
-`bangla_synonyms/core/_mysource.py` তৈরি করো:
-
-```python
-"""
-core/_mysource.py
-
-Contract:
-    fetch_mysource(word, session, timeout) -> list[str] | None
-        list[str]  — synonyms found (may be empty [])
-        None       — network / HTTP error (caller will try next source)
-"""
-from __future__ import annotations
-import logging
-from urllib.parse import quote
-from bs4 import BeautifulSoup
-import requests
-
-log = logging.getLogger(__name__)
-
-def fetch_mysource(word: str, session, timeout: int = 10) -> list | None:
-    url = f"https://example.com/bn/synonyms/{quote(word)}"
-    try:
-        resp = session.get(url, timeout=timeout)
-        resp.raise_for_status()
-    except requests.exceptions.Timeout:
-        log.warning("[mysource] timeout for '%s'", word)
-        return None                   # None = network error, try next source
-    except requests.exceptions.HTTPError:
-        return []                     # [] = page exists but no data
-    except requests.exceptions.RequestException:
-        return None
-
-    soup = BeautifulSoup(resp.text, "lxml")
-    synonyms = []
-    # ... parse HTML and collect Bangla words into synonyms list
-    return synonyms
-```
-
-### Step 2 — register করো
-
-`bangla_synonyms/core/__init__.py` এ:
-
-```python
-from ._mysource import fetch_mysource as _fetch_mysource
-
-SOURCES["mysource"] = _fetch_mysource
-
-# Default cascade এ যোগ করতে চাইলে:
-DEFAULT_SOURCES.append("mysource")
-```
-
-### Done — এখনই সব জায়গায় available
-
-```python
-import bangla_synonyms as bs
-
-bs.get("চোখ", sources=["mysource"])
-bs.get("চোখ", sources=["wiktionary", "mysource"])
-bs.get("চোখ", raw=True)   # "source": "mysource" entries দেখাবে
-
-from bangla_synonyms import Scrapper
-sc = Scrapper(sources=["mysource"])
-
-from bangla_synonyms.core import BatchScraper
-batch = BatchScraper(sources=["mysource"])
-```
-
----
-
-## License
-
-MIT License — see [LICENSE](LICENSE) for full text.
 
 ---
 
 ## Acknowledgements
 
-এই package নিচের open data sources ব্যবহার করে:
+Data sources used by this package:
 
 - [Bangla Wiktionary](https://bn.wiktionary.org) — CC BY-SA 3.0
 - [Shabdkosh](https://www.shabdkosh.com)
 - [English-Bangla Dictionary](https://www.english-bangla.com)
-
-Bangla NLP community র জন্য ❤️

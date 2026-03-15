@@ -1,3 +1,0 @@
-bangla_synonyms
-dist
-tests

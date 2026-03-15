@@ -1,2 +1,0 @@
-[console_scripts]
-bangla-synonyms = bangla_synonyms.cli:main

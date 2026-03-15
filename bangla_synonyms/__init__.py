@@ -1,188 +1,172 @@
 """
-bangla-synonyms
+bangla_synonyms
 ================
 Bangla synonym lookup — offline dataset + live web scraping.
 
-Three sources, smart fallback, offline mode, batch scraping.
-
-─────────────────────────────────────────────────────────
-THE SIMPLEST WAY:
-─────────────────────────────────────────────────────────
+Simplest usage
+--------------
     import bangla_synonyms as bs
 
-    bs.download()                          # dataset একবার download করো
-    bs.get("চোখ")                          # → ['চক্ষু', 'নেত্র', 'লোচন', ...]
-    bs.get_many(["চোখ", "মা"])             # → {'চোখ': [...], 'মা': [...]}
-    bs.stats()                             # dataset info
+    bs.download()                           # download dataset once
+    bs.get("চোখ")                           # → ['চক্ষু', 'নেত্র', 'লোচন', ...]
+    bs.get_many(["চোখ", "মা"])              # → {'চোখ': [...], 'মা': [...]}
+    bs.stats()                              # dataset statistics
 
-─────────────────────────────────────────────────────────
-SCRAPER WITH FULL CONTROL  (Scrapper):
-─────────────────────────────────────────────────────────
+Full control (lookup)
+---------------------
     from bangla_synonyms import Scrapper
 
-    sc = Scrapper()                        # online, all sources, delay=1s
-    sc = Scrapper(offline=True)            # local dataset only
-    sc = Scrapper(sources=["wiktionary"])  # Wiktionary only
-    sc = Scrapper(merge=False)             # stop at first source with results
-    sc = Scrapper(auto_save=False)         # scrape but don't write to disk
-    sc = Scrapper(delay=2.0, timeout=15)   # slow connection / polite scraping
+    sc = Scrapper()                         # online, all sources
+    sc = Scrapper(offline=True)             # local dataset only
+    sc = Scrapper(sources=["wiktionary"])   # Wiktionary only
+    sc = Scrapper(merge=False)              # stop at first source with results
+    sc = Scrapper(auto_save=True)           # persist scraped results to disk
+    sc = Scrapper(delay=2.0, timeout=15)    # slow connection / polite scraping
 
     sc.get("চোখ")
     sc.get_many(["চোখ", "মা", "নদী"])
 
-    # Sources available:
-    # "wiktionary"     — bn.wiktionary.org (most reliable)
-    # "shabdkosh"      — shabdkosh.com (good coverage)
-    # "english_bangla" — english-bangla.com (last resort)
-
-─────────────────────────────────────────────────────────
-ADVANCED  (bangla_synonyms.core):
-─────────────────────────────────────────────────────────
-    from bangla_synonyms.core import DatasetManager, WordlistFetcher, BatchScraper
+Dataset management
+------------------
+    from bangla_synonyms.core import DatasetManager
 
     dm = DatasetManager()
-    dm.stats()
     dm.add("নদী", ["তটিনী", "প্রবাহিনী"])
     dm.remove("শব্দ")
-    dm.merge("extra.json")
+    dm.stats()
     dm.export("output.csv", fmt="csv")
 
-    wf    = WordlistFetcher()
-    words = wf.fetch(limit=500)
-    new   = wf.filter_new(words, dm)      # skip already known words
+Bulk scraping
+-------------
+    from bangla_synonyms.core import BatchScraper
 
-    bs = BatchScraper(delay=1.0)
-    bs.run(words)
-    bs.run(words, sources=["wiktionary"])
-    bs.run_from_wiktionary(limit=500)
+    scraper = BatchScraper(delay=1.0)
+    scraper.run_from_wiktionary(limit=500)
 
-─────────────────────────────────────────────────────────
-CLI:
-─────────────────────────────────────────────────────────
+CLI
+---
     bangla-synonyms download
-    bangla-synonyms download --version mini
     bangla-synonyms get চোখ
     bangla-synonyms get চোখ মা সুন্দর --sources wiktionary
-    bangla-synonyms get চোখ --offline
-    bangla-synonyms build --limit 500 --delay 1.5
-    bangla-synonyms build --sources wiktionary --sources shabdkosh
+    bangla-synonyms build --limit 500
     bangla-synonyms stats
     bangla-synonyms export synonyms.json
-    bangla-synonyms export synonyms.csv --format csv
 """
 from __future__ import annotations
 
-from .synonyms  import BanglaSynonyms
 from ._scrapper import Scrapper
+from .core      import DatasetManager
 
 __version__ = "1.0.0"
-__all__ = [
-    "BanglaSynonyms", "Scrapper",
-    "download", "get", "get_many", "stats",
-]
+__all__ = ["Scrapper", "download", "get", "get_many", "stats"]
 
+# Shared instance — avoids creating a new HTTP session on every bs.get() call.
+# When ``sources`` is None the default, this singleton handles all requests.
+_default = Scrapper()
 
-# ── Module-level convenience API ──────────────────────────────
-# nltk.download() এর মতো — class বা instance লাগবে না।
-#
-#   import bangla_synonyms as bs
-#   bs.download()
-#   bs.get("চোখ")
 
 def download(version: str = "latest", force: bool = False) -> None:
     """
-    Bangla synonym dataset download করে।
+    Download the pre-built Bangla synonym dataset from GitHub Releases.
 
-    Saves to: ``./bangla_synonyms_data/dataset.json``
+    Saves to ``./bangla_synonyms_data/dataset.json``.  All running
+    instances pick up the new data immediately — no restart needed.
 
     Parameters
     ----------
-    version : ``"latest"`` (default, ~10 000 words) or ``"mini"`` (small starter set)
-    force   : re-download even if dataset already exists
+    version : str, default "latest"
+        ``"latest"`` — full dataset (~10 000 words).
+        ``"mini"``   — small starter set (~500 words).
+    force : bool, default False
+        Re-download even if the dataset file already exists.
 
     Examples
     --------
         import bangla_synonyms as bs
 
-        bs.download()                  # full dataset
-        bs.download("mini")            # small version
-        bs.download(force=True)        # force re-download
+        bs.download()
+        bs.download("mini")
+        bs.download(force=True)
     """
-    BanglaSynonyms.download(version=version, force=force)
+    Scrapper.download(version=version, force=force)
 
 
-def get(word: str, sources: list | None = None, raw: bool = False) -> list[str] | dict:
+def get(word: str, sources: list | None = None, raw: bool = False) -> list | dict:
     """
-    একটা শব্দের synonym list return করে।
+    Return synonyms for a single Bangla word.
 
-    Local dataset এ না পেলে automatically online fallback করে।
-    কিছু না পেলে empty list ``[]`` return করে।
+    Checks the local dataset first; falls back to live scraping when the
+    word is not cached.  Returns ``[]`` when nothing is found.
 
     Parameters
     ----------
-    word    : Bangla শব্দ
-    sources : কোন sources ব্যবহার করবে (default: সব তিনটা)
-    raw     : False (default) → flat list
-              True            → source metadata সহ dict
+    word : str
+        The Bangla word to look up.
+    sources : list[str] | None, default None
+        Which sources to query.  ``None`` uses all three in default order:
+        Wiktionary → Shabdkosh → English-Bangla.
+    raw : bool, default False
+        ``False`` — plain ``list[str]``.
+        ``True``  — metadata dict with per-source breakdown and quality field.
 
     Examples
     --------
         import bangla_synonyms as bs
 
-        bs.get("চোখ")                          # → ['চক্ষু', 'নেত্র', ...]
-        bs.get("চোখ", sources=["wiktionary"])  # Wiktionary only
+        bs.get("চোখ")
+        bs.get("চোখ", sources=["wiktionary"])
         bs.get("চোখ", raw=True)
-        # → {
-        #     "word":          "চোখ",
-        #     "source":        "wiktionary",
-        #     "results":       [{"synonym": "চক্ষু", "source": "wiktionary"}, ...],
-        #     "words":         ["চক্ষু", "নেত্র", ...],
-        #     "sources_hit":   ["wiktionary"],
-        #     "sources_tried": ["wiktionary", "shabdkosh", "english_bangla"],
-        # }
+        bs.get("xyz")   # → []
     """
-    return Scrapper(sources=sources).get(word, raw=raw)
+    if sources:
+        return Scrapper(sources=sources).get(word, raw=raw)
+    return _default.get(word, raw=raw)
 
 
-def get_many(words: list[str], sources: list | None = None, raw: bool = False) -> dict:
+def get_many(words: list, sources: list | None = None, raw: bool = False) -> dict:
     """
-    একাধিক শব্দের synonym lookup করে।
+    Return synonyms for multiple Bangla words.
 
     Parameters
     ----------
-    words   : Bangla শব্দের list
-    sources : কোন sources ব্যবহার করবে (default: সব তিনটা)
-    raw     : False (default) → ``{word: [synonyms]}``
-              True            → ``{word: raw_dict}`` (source metadata সহ)
+    words : list[str]
+        Bangla words to look up.
+    sources : list[str] | None, default None
+        Which sources to query (default: all three).
+    raw : bool, default False
+        ``False`` — ``{word: list[str]}``.
+        ``True``  — ``{word: dict}`` with source metadata per word.
 
     Examples
     --------
         import bangla_synonyms as bs
 
         bs.get_many(["চোখ", "মা", "দুঃখ"])
-        # → {'চোখ': [...], 'মা': [...], 'দুঃখ': [...]}
-
         bs.get_many(["চোখ", "মা"], raw=True)
-        # → {
-        #     'চোখ': {"word": "চোখ", "results": [...], "words": [...], ...},
-        #     'মা':  {"word": "মা",  "results": [...], "words": [...], ...},
-        #   }
     """
-    return Scrapper(sources=sources).get_many(words, raw=raw)
+    if sources:
+        return Scrapper(sources=sources).get_many(words, raw=raw)
+    return _default.get_many(words, raw=raw)
 
 
 def stats() -> dict:
     """
-    Local dataset statistics print করে এবং dict হিসেবে return করে।
+    Print local dataset statistics and return them as a dict.
+
+    Delegates to ``DatasetManager.stats()``.
+
+    Returns
+    -------
+    dict
+        Keys: ``total_words``, ``total_synonyms``, ``avg_per_word``, ``source``.
 
     Examples
     --------
         import bangla_synonyms as bs
 
-        bs.stats()
+        info = bs.stats()
         # Words         : 9842
         # Total synonyms: 47391
         # Avg / word    : 4.82
     """
-    from .core import DatasetManager
     return DatasetManager().stats()
