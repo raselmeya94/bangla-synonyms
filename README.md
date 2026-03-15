@@ -177,25 +177,28 @@ bs.get(word, sources=None, raw=False)
 | `raw`     | `bool`         | `False` | Return a metadata dict instead of a plain list |
 
 ```python
-bs.get("চোখ")
-# → ['চক্ষু', 'নেত্র', 'লোচন', 'আঁখি']
+bs.get("সুন্দর")
+# → ['মনোরম', 'সুশ্রী', 'চমৎকার']
 
-bs.get("চোখ", sources=["wiktionary"])
-bs.get("চোখ", sources=["wiktionary", "shabdkosh"])
+bs.get("সুন্দর", sources=["wiktionary"])
+bs.get("সুন্দর", sources=["wiktionary", "shabdkosh"])
 
-bs.get("চোখ", raw=True)
+bs.get("সুন্দর", raw=True)
 # → {
-#     "word":          "চোখ",
-#     "source":        "wiktionary",
-#     "results": [
-#         {"synonym": "চক্ষু", "source": "wiktionary"},
-#         {"synonym": "নেত্র", "source": "wiktionary"},
-#         {"synonym": "অক্ষি", "source": "shabdkosh", "confirmed": True},
-#     ],
-#     "words":         ["চক্ষু", "নেত্র", "অক্ষি"],
-#     "sources_hit":   ["wiktionary", "shabdkosh"],
-#     "sources_tried": ["wiktionary", "shabdkosh", "english_bangla"],
-#     "quality":       "wikiconfirmed",
+#   'word': 'সুন্দর',
+#   'sources_results': {
+#       'wiktionary': ['মনোরম', 'সুশ্রী', 'চমৎকার'],
+#       'shabdkosh': ['লাবণ্যময়', 'দৃষ্টিনন্দন', 'মনোরম']
+#   },
+#   'results': [
+#       {'synonym': 'মনোরম', 'source': 'wiktionary'},
+#       {'synonym': 'সুশ্রী', 'source': 'wiktionary'}
+#   ],
+#   'words': ['মনোরম', 'সুশ্রী', 'চমৎকার'],
+#   'sources_hit': ['wiktionary', 'shabdkosh'],
+#   'sources_tried': ['wiktionary', 'shabdkosh'],
+#   'quality': 'wikiconfirmed',
+#   'source': 'wiktionary'
 # }
 
 bs.get("xyz")
@@ -253,20 +256,24 @@ Pass `raw=True` to any lookup function to receive full source metadata alongside
 
 ```python
 {
-    "word":          str,           # the word that was looked up
-    "source":        str | None,    # primary source, or "local" for cached results
+    "word": str,                  # looked up word
+    "source": str | None,         # primary source
+
+    "sources_results": {
+        "source_name": list[str]  # synonyms returned by that source
+    },
+
     "results": [
         {
-            "synonym":   str,       # the synonym
-            "source":    str,       # which source provided it
-            "confirmed": bool,      # True when cross-validated (optional key)
-        },
-        ...
+            "synonym": str,
+            "source": str
+        }
     ],
-    "words":         list[str],     # flat synonym list (backward-compatible)
-    "sources_hit":   list[str],     # sources that returned data
-    "sources_tried": list[str],     # sources that were queried
-    "quality":       str,           # filtering strategy applied
+
+    "words": list[str],           # flat synonym list
+    "sources_hit": list[str],     # sources that returned data
+    "sources_tried": list[str],   # queried sources
+    "quality": str                # filtering strategy
 }
 ```
 
