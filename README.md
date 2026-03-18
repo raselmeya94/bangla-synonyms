@@ -54,10 +54,8 @@ Results are cached locally on first lookup, so the dataset grows automatically t
   - [BatchScraper](#batchscraper)
 - [CLI Reference](#cli-reference)
 - [Dataset](#dataset)
-- [Architecture](#architecture)
-- [Adding a New Source](#adding-a-new-source)
 - [Contributing](#contributing)
-- [License](#license)
+- [Acknowledgements](#acknowledgements)
 
 ---
 
@@ -73,7 +71,7 @@ Results are cached locally on first lookup, so the dataset grows automatically t
 | **Merge or first-hit** | Combine results from all sources, or stop at the first match        |
 | **Opt-in persistence** | Scraped results are saved to disk only when `auto_save=True`        |
 | **Batch scraping**     | Scrape thousands of words with progress tracking and resume support |
-| **Dataset download**   | One-command download of a pre-built ~10,000 word dataset            |
+| **Dataset download** | One-command download of a pre-built dataset (~2,915 words, 18,158 synonym entries) |
 | **CLI**                | Full command-line interface for scripting and one-off lookups       |
 | **Python 3.9+**        | Type-annotated, minimal dependencies                                |
 
@@ -154,7 +152,7 @@ import bangla_synonyms as bs
 ### `download()`
 
 ```python
-bs.download()                       # full dataset (~10,000 words)
+bs.download()                       # full dataset (~3000 words)
 bs.download("mini")                 # small starter set (~500 words)
 bs.download(force=True)             # re-download even if the file already exists
 bs.download("latest", force=True)
@@ -235,15 +233,14 @@ bs.get_many(["চোখ", "মা"], raw=True)
 
 ```python
 bs.stats()
-# Words         : 9842
-# Total synonyms: 47391
-# Avg / word    : 4.82
+# Words         : 2915
+# Total synonyms: 18158
+# Avg / word    :  6.23
 # Source        : /home/user/bangla_synonyms_data/dataset.json
 # Top 5 words   :
 #   চোখ: চক্ষু, নেত্র, লোচন, আঁখি ...
 #   মা: জননী, আম্মা, জন্মদাত্রী ...
 ```
-
 Returns a `dict` with keys: `total_words`, `total_synonyms`, `avg_per_word`, `source`.
 
 ---
@@ -338,34 +335,90 @@ sc = Scrapper(sources=["wiktionary", "shabdkosh"])    # two sources
 sc = Scrapper(merge=False)                            # stop at first hit
 sc = Scrapper(delay=2.0, timeout=20)                  # slow connection
 ```
-
 ### `.get(word, raw=False)`
 
-Checks the local dataset first. Falls back to live scraping if the word is not found.
+Fetch synonyms for a given Bengali word.
+
+- Checks the **local dataset first**
+- Falls back to **live sources** if not found
+- Can merge results from multiple sources (depending on config)
+
+---
+
+#### Basic Usage
 
 ```python
 sc.get("চোখ")
-# → ['চক্ষু', 'নেত্র', 'লোচন', ...]
-
-sc.get("চোখ", raw=True)
-# → {"word": "চোখ", "source": "wiktionary", "quality": "wikiconfirmed", ...}
-
-# Local cache hit — no network call is made
-sc.get("মা", raw=True)
-# → {"word": "মা", "source": "local", "quality": "local", ...}
-
-Scrapper(offline=True).get("নদী")
-# → local dataset lookup only
+# → ['চক্ষু', 'নেত্র', 'লোচন', 'আঁখি', 'নয়ন']
 ```
 
+---
+
+#### Full Structured Output
+
+```python
+sc.get("চোখ", raw=True)
+# → {
+#     'word': 'চোখ',
+#     'source': 'wiktionary',
+#     'sources_results': {
+#         'wiktionary': ['চক্ষু', 'নেত্র', 'লোচন', 'আঁখি', 'নয়ন'],
+#         'shabdkosh': [...],
+#         'english_bangla': [...]
+#     },
+#     'results': [
+#         {'synonym': 'চক্ষু', 'source': 'wiktionary'},
+#         {'synonym': 'নেত্র', 'source': 'wiktionary'},
+#         {'synonym': 'লোচন', 'source': 'wiktionary'},
+#         {'synonym': 'আঁখি', 'source': 'wiktionary'},
+#         {'synonym': 'নয়ন', 'source': 'wiktionary'}
+#     ],
+#     'words': ['চক্ষু', 'নেত্র', 'লোচন', 'আঁখি', 'নয়ন'],
+#     'sources_hit': ['wiktionary', 'shabdkosh', 'english_bangla'],
+#     'sources_tried': ['wiktionary', 'shabdkosh', 'english_bangla'],
+#     'quality': 'wikiconfirmed'
+# }
+```
+
+---
+
+#### 🧠 How It Works
+
+- **`sources_results`** → raw results from all sources  
+- **`results`** → cleaned + selected synonyms (based on priority)  
+- **`words`** → final flattened synonym list (default output)  
+- **`source`** → primary source used for final selection  
+- **`quality`** → confidence level (e.g. `local`, `wikiconfirmed`)  
+- **`sources_hit`** → sources that returned data  
+- **`sources_tried`** → all attempted sources  
+
+---
+
+#### Notes
+
+```python
+# Local cache hit — no network call
+sc.get("মা", raw=True)
+
+# Offline mode — only local dataset is used
+Scrapper(offline=True).get("নদী")
+```
+
+---
+
 ### `.get_many(words, raw=False)`
+
+Fetch synonyms for multiple words at once.
 
 ```python
 sc.get_many(["চোখ", "মা", "নদী"])
 # → {'চোখ': [...], 'মা': [...], 'নদী': [...]}
 
 sc.get_many(["চোখ", "মা"], raw=True)
-# → {'চোখ': {raw dict}, 'মা': {raw dict}}
+# → {
+#     'চোখ': { ...full structured response... },
+#     'মা': { ...full structured response... }
+# }
 ```
 
 The request delay applies only to live HTTP calls. Local cache hits incur no delay.
@@ -505,16 +558,16 @@ word,synonyms,count
 
 ```python
 info = dm.stats()
-# Words         : 9842
-# Total synonyms: 47391
-# Avg / word    : 4.82
+# Words         : 2915
+# Total synonyms: 18158
+# Avg / word    : 6.23
 # Source        : /home/user/bangla_synonyms_data/dataset.json
 # Top 5 words   :
 #   চোখ: চক্ষু, নেত্র, লোচন, আঁখি ...
 
-info["total_words"]     # 9842
-info["total_synonyms"]  # 47391
-info["avg_per_word"]    # 4.82
+info["total_words"]     
+info["total_synonyms"]  
+info["avg_per_word"]   
 ```
 
 ---
@@ -688,7 +741,7 @@ A pre-built dataset is available for download via GitHub Releases.
 
 | Version  | Words   | Approximate size | Command               |
 | -------- | ------- | ---------------- | --------------------- |
-| `latest` | ~10,000 | ~3 MB            | `bs.download()`       |
+| `latest` | ~2915 | ~100 MB            | `bs.download()`       |
 | `mini`   | ~500    | ~150 KB          | `bs.download("mini")` |
 
 The dataset is saved to `./bangla_synonyms_data/dataset.json`. All running instances pick up the new data immediately after a download — no restart required.
